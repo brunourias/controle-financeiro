@@ -1,0 +1,18 @@
+{
+  "name": "Fluxo — Controle Financeiro",
+  "short_name": "Fluxo",
+  "description": "Controle financeiro pessoal a partir de faturas e extratos.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f3f6f8",
+  "theme_color": "#062f5d",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
