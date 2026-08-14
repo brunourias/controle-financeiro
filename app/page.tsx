@@ -50,7 +50,13 @@ export default function Home() {
     if ("serviceWorker" in navigator) navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => undefined);
     return observeUser(async (account) => {
       setUser(account ? { uid: account.uid, displayName: account.displayName, email: account.email } : null);
-      if (!account) return;
+      if (!account) {
+        setTransactions([]);
+        setCloudDocuments([]);
+        setPendingDocuments([]);
+        setSelectedMonth("");
+        return;
+      }
       setCloudBusy(true);
       try {
         const history = await loadFinancialHistory(account.uid);
@@ -87,7 +93,7 @@ export default function Home() {
       const seen = new Set<string>(); let duplicateCount = 0, pages = 0, lines = 0;
       for (const entry of selected) {
         const hash = await hashFile(entry.file);
-        if (seen.has(hash) || cloudDocuments.some((document) => document.hash === hash) || (user && await documentExists(user.uid, hash))) { duplicateCount += 1; continue; }
+        if (seen.has(hash) || pendingDocuments.some((document) => document.hash === hash) || cloudDocuments.some((document) => document.hash === hash) || (user && await documentExists(user.uid, hash))) { duplicateCount += 1; continue; }
         seen.add(hash);
         const result = await parseSantanderPdf(entry.file, entry.kind);
         pages += result.pageCount; lines += result.lineCount; batchWarnings.push(...result.warnings);
