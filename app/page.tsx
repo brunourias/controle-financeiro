@@ -59,7 +59,9 @@ export default function Home() {
   const [tab, setTab] = useState<"overview" | "transactions" | "insights">("overview");
   const ready = Boolean(files.invoice && files.statement);
   useEffect(() => {
-    if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => undefined);
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => undefined);
+    }
   }, []);
   const donut = useMemo(
     () => `conic-gradient(${categories.map((c, i) => `${c.color} ${categories.slice(0, i).reduce((a, b) => a + b.value, 0)}% ${categories.slice(0, i + 1).reduce((a, b) => a + b.value, 0)}%`).join(",")})`,
