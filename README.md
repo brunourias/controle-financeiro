@@ -1,18 +1,47 @@
 # Fluxo — Controle Financeiro
 
-Aplicativo web responsivo para transformar faturas de cartão e extratos bancários em uma visão simples dos gastos mensais.
+Aplicativo web responsivo para importar faturas de cartão e extratos bancários em PDF, acompanhar gastos e comparar a evolução financeira mês a mês.
 
-## Primeira versão
+## Recursos disponíveis
 
-- importação de fatura e extrato em PDF;
-- painel de gastos por categoria;
-- listagem de transações;
-- alertas e oportunidades de economia;
-- experiência instalável no celular (PWA);
-- processamento local dos documentos durante a fase inicial.
+- leitura real de múltiplos PDFs de fatura e extrato;
+- identificação automática do mês de cada documento;
+- detecção de documentos repetidos por hash SHA-256;
+- revisão das transações antes da importação;
+- visão mensal, comparação e evolução por categoria;
+- login com Google e histórico salvo no Cloud Firestore;
+- experiência instalável no celular (PWA).
 
-> O painel atual utiliza dados demonstrativos. A extração automática do conteúdo dos PDFs será adicionada na próxima etapa.
+Os PDFs são processados no navegador. O Firebase recebe somente os dados extraídos e confirmados pelo usuário, não os arquivos originais.
+
+## Ativar o Firebase
+
+1. Crie um projeto exclusivo no [Firebase Console](https://console.firebase.google.com/) e registre um aplicativo Web.
+2. Em **Authentication > Sign-in method**, ative o provedor Google.
+3. Em **Authentication > Settings > Authorized domains**, adicione `brunourias.github.io`.
+4. Crie um banco **Cloud Firestore** e publique as regras do arquivo `firestore.rules`.
+5. No repositório GitHub, abra **Settings > Secrets and variables > Actions** e crie estes Repository secrets com os valores de configuração do aplicativo Web:
+
+   - `VITE_FIREBASE_API_KEY`
+   - `VITE_FIREBASE_AUTH_DOMAIN`
+   - `VITE_FIREBASE_PROJECT_ID`
+   - `VITE_FIREBASE_STORAGE_BUCKET`
+   - `VITE_FIREBASE_MESSAGING_SENDER_ID`
+   - `VITE_FIREBASE_APP_ID`
+
+6. Execute novamente o workflow **Publicar no GitHub Pages**.
+
+> A configuração do aplicativo Firebase fica exposta no JavaScript publicado por definição. A proteção dos dados depende da autenticação e das regras do Firestore; não substitua as regras por acesso público.
+
+## Desenvolvimento local
+
+Copie `.env.example` para `.env.local`, preencha os valores e execute:
+
+```bash
+npm install
+npm run dev
+```
 
 ## Privacidade
 
-Não envie faturas, extratos, senhas, tokens ou arquivos `.env` ao repositório. A infraestrutura de autenticação e armazenamento financeiro deverá permanecer separada de outros aplicativos.
+Não envie faturas, extratos, senhas, tokens, chaves administrativas ou arquivos `.env` ao repositório.
