@@ -1,5 +1,6 @@
 const CACHE = "fluxo-shell-v1";
-const SHELL = ["/", "/manifest.webmanifest", "/favicon.svg"];
+const BASE = self.registration.scope;
+const SHELL = [BASE, `${BASE}manifest.webmanifest`, `${BASE}favicon.svg`];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)));
@@ -22,6 +23,6 @@ self.addEventListener("fetch", (event) => {
         caches.open(CACHE).then((cache) => cache.put(event.request, copy));
         return response;
       })
-      .catch(() => caches.match(event.request).then((cached) => cached || caches.match("/"))),
+      .catch(() => caches.match(event.request).then((cached) => cached || caches.match(BASE))),
   );
 });
