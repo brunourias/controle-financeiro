@@ -1,138 +1,68 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { categorize, parseSantanderPdf, type Category, type DocumentKind, type ParsedTransaction } from "../src/lib/pdfParser";
 
-type FileKind = "invoice" | "statement";
+type FileKind = DocumentKind;
+type View = "upload" | "review" | "dashboard";
+const CATEGORY_META: Record<Category, { color: string }> = {
+  "Alimentação": { color: "#073b72" }, "Moradia": { color: "#179765" }, "Transporte": { color: "#ff675d" },
+  "Assinaturas": { color: "#7654c8" }, "Saúde": { color: "#e44f87" }, "Compras": { color: "#d88c20" },
+  "Transferências": { color: "#2e78b7" }, "Outros": { color: "#9aa5b1" },
+};
+const CATEGORY_NAMES = Object.keys(CATEGORY_META) as Category[];
+const DEMO_TRANSACTIONS: ParsedTransaction[] = [
+  ["Supermercado Vila", "Alimentação", "2026-08-12", -386.42, "invoice"], ["Restaurante Manjericão", "Alimentação", "2026-08-11", -148.90, "invoice"],
+  ["Auto Posto Central", "Transporte", "2026-08-09", -250, "invoice"], ["Streaming Plus", "Assinaturas", "2026-08-08", -39.90, "invoice"],
+  ["Condomínio Residencial", "Moradia", "2026-08-07", -890, "statement"], ["Pix recebido", "Transferências", "2026-08-05", 3200, "statement"],
+].map(([description, category, date, amount, source], index) => ({ id: `demo-${index}`, description: String(description), category: category as Category, date: String(date), amount: Number(amount), source: source as FileKind, confidence: "alta", raw: String(description) }));
+const money = (value: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
+const shortDate = (value: string) => new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" }).format(new Date(`${value}T12:00:00`));
 
-const categories = [
-  { name: "Alimentação", value: 31, color: "#073b72" },
-  { name: "Moradia", value: 24, color: "#179765" },
-  { name: "Transporte", value: 16, color: "#ff675d" },
-  { name: "Assinaturas", value: 9, color: "#7654c8" },
-  { name: "Outros", value: 20, color: "#9aa5b1" },
-];
-
-const transactions = [
-  ["Supermercado Vila", "Alimentação", "12 ago", "R$ 386,42"],
-  ["Restaurante Manjericão", "Alimentação", "11 ago", "R$ 148,90"],
-  ["Auto Posto Central", "Transporte", "09 ago", "R$ 250,00"],
-  ["Streaming Plus", "Assinaturas", "08 ago", "R$ 39,90"],
-];
-
-function UploadCard({
-  kind,
-  title,
-  file,
-  onFile,
-}: {
-  kind: FileKind;
-  title: string;
-  file?: File;
-  onFile: (kind: FileKind, file?: File) => void;
-}) {
+function UploadCard({ kind, title, file, onFile }: { kind: FileKind; title: string; file?: File; onFile: (kind: FileKind, file?: File) => void }) {
   const input = useRef<HTMLInputElement>(null);
-  return (
-    <div className={`upload-card ${file ? "is-ready" : ""}`}>
-      <button className="upload-main" onClick={() => input.current?.click()} type="button">
-        <span className="pdf-icon">PDF</span>
-        <span>
-          <strong>{title}</strong>
-          <small>{file?.name ?? "Selecione um arquivo PDF"}</small>
-        </span>
-        <span className="upload-status">{file ? "✓" : "+"}</span>
-      </button>
-      <input
-        ref={input}
-        hidden
-        type="file"
-        accept="application/pdf,.pdf"
-        aria-label={`Importar ${title}`}
-        onChange={(event) => onFile(kind, event.target.files?.[0])}
-      />
-    </div>
-  );
+  return <div className={`upload-card ${file ? "is-ready" : ""}`}><button className="upload-main" onClick={() => input.current?.click()} type="button"><span className="pdf-icon">PDF</span><span><strong>{title}</strong><small>{file?.name ?? "Selecione um arquivo PDF"}</small></span><span className="upload-status">{file ? "✓" : "+"}</span></button><input ref={input} hidden type="file" accept="application/pdf,.pdf" aria-label={`Importar ${title}`} onChange={(event) => onFile(kind, event.target.files?.[0])} /></div>;
 }
 
 export default function Home() {
   const [files, setFiles] = useState<Partial<Record<FileKind, File>>>({});
-  const [view, setView] = useState<"upload" | "dashboard">("upload");
+  const [view, setView] = useState<View>("upload");
   const [tab, setTab] = useState<"overview" | "transactions" | "insights">("overview");
+  const [transactions, setTransactions] = useState<ParsedTransaction[]>([]);
+  const [parsing, setParsing] = useState(false);
+  const [error, setError] = useState("");
+  const [warnings, setWarnings] = useState<string[]>([]);
+  const [documentStats, setDocumentStats] = useState({ pages: 0, lines: 0 });
   const ready = Boolean(files.invoice && files.statement);
-  useEffect(() => {
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => undefined);
-    }
-  }, []);
-  const donut = useMemo(
-    () => `conic-gradient(${categories.map((c, i) => `${c.color} ${categories.slice(0, i).reduce((a, b) => a + b.value, 0)}% ${categories.slice(0, i + 1).reduce((a, b) => a + b.value, 0)}%`).join(",")})`,
-    [],
-  );
+  useEffect(() => { if ("serviceWorker" in navigator) navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => undefined); }, []);
+  const expenses = useMemo(() => transactions.filter((item) => item.amount < 0), [transactions]);
+  const invoiceTotal = useMemo(() => Math.abs(expenses.filter((item) => item.source === "invoice").reduce((sum, item) => sum + item.amount, 0)), [expenses]);
+  const statementTotal = useMemo(() => Math.abs(expenses.filter((item) => item.source === "statement").reduce((sum, item) => sum + item.amount, 0)), [expenses]);
+  const total = invoiceTotal + statementTotal;
+  const categoryData = useMemo(() => CATEGORY_NAMES.map((name) => { const value = Math.abs(expenses.filter((item) => item.category === name).reduce((sum, item) => sum + item.amount, 0)); return { name, value, percentage: total ? Math.round(value / total * 100) : 0, color: CATEGORY_META[name].color }; }).filter((item) => item.value > 0).sort((a, b) => b.value - a.value), [expenses, total]);
+  const donut = `conic-gradient(${categoryData.map((item, index) => { const start = categoryData.slice(0, index).reduce((sum, entry) => sum + entry.percentage, 0); return `${item.color} ${start}% ${start + item.percentage}%`; }).join(",") || "#e9eef3 0 100%"})`;
 
-  const onFile = (kind: FileKind, file?: File) => {
-    if (file && file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) return;
-    setFiles((current) => ({ ...current, [kind]: file }));
+  const onFile = (kind: FileKind, file?: File) => { if (file && file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) { setError("Selecione um arquivo no formato PDF."); return; } setError(""); setFiles((current) => ({ ...current, [kind]: file })); };
+  const analyze = async () => {
+    if (!files.invoice || !files.statement) return;
+    setParsing(true); setError(""); setWarnings([]);
+    try {
+      const [invoice, statement] = await Promise.all([parseSantanderPdf(files.invoice, "invoice"), parseSantanderPdf(files.statement, "statement")]);
+      const all = [...invoice.transactions, ...statement.transactions].sort((a, b) => b.date.localeCompare(a.date));
+      if (!all.length) throw new Error("Não encontramos movimentações nesses documentos. Verifique se os PDFs foram exportados diretamente pelo Santander.");
+      setTransactions(all); setWarnings([...invoice.warnings, ...statement.warnings]); setDocumentStats({ pages: invoice.pageCount + statement.pageCount, lines: invoice.lineCount + statement.lineCount }); setView("review");
+    } catch (caught) { setError(caught instanceof Error ? caught.message : "Falha inesperada ao analisar os PDFs."); } finally { setParsing(false); }
   };
+  const updateTransaction = (id: string, patch: Partial<ParsedTransaction>) => setTransactions((items) => items.map((item) => item.id === id ? { ...item, ...patch } : item));
+  const startDemo = () => { setTransactions(DEMO_TRANSACTIONS); setWarnings([]); setDocumentStats({ pages: 0, lines: 0 }); setView("dashboard"); };
 
-  if (view === "upload") {
-    return (
-      <main className="upload-page">
-        <section className="brand-panel">
-          <div className="brand"><span>f</span> fluxo</div>
-          <div className="brand-copy">
-            <p className="eyebrow">Seu dinheiro, mais claro</p>
-            <h1>Entenda seus gastos.<br />Poupe com intenção.</h1>
-            <p>Transforme sua fatura e seu extrato em uma visão simples do seu mês — sem planilhas.</p>
-          </div>
-          <div className="security-pill">🔒 Seus documentos ficam neste dispositivo</div>
-        </section>
-        <section className="import-panel">
-          <div className="mobile-brand"><span>f</span> fluxo</div>
-          <div className="step">ETAPA 1 DE 2</div>
-          <h2>Olá, Bruno 👋</h2>
-          <p className="lead">Importe os documentos de agosto para prepararmos sua análise.</p>
-          <div className="uploads">
-            <UploadCard kind="invoice" title="Fatura do cartão" file={files.invoice} onFile={onFile} />
-            <UploadCard kind="statement" title="Extrato bancário" file={files.statement} onFile={onFile} />
-          </div>
-          <div className="privacy-note"><span>✓</span><p><strong>Processamento privado</strong><br />Nesta primeira versão, seus arquivos não são enviados ao banco nem armazenados na nuvem.</p></div>
-          <button className="primary" disabled={!ready} onClick={() => setView("dashboard")}>
-            {ready ? "Analisar meus gastos →" : "Importe os dois documentos"}
-          </button>
-          <button className="demo" onClick={() => setView("dashboard")}>Explorar com dados de demonstração</button>
-        </section>
-      </main>
-    );
-  }
+  if (view === "upload") return <main className="upload-page"><section className="brand-panel"><div className="brand"><span>f</span> fluxo</div><div className="brand-copy"><p className="eyebrow">Seu dinheiro, mais claro</p><h1>Entenda seus gastos.<br />Poupe com intenção.</h1><p>Transforme sua fatura e seu extrato em uma visão simples do seu mês — sem planilhas.</p></div><div className="security-pill">🔒 Seus documentos ficam neste dispositivo</div></section><section className="import-panel"><div className="mobile-brand"><span>f</span> fluxo</div><div className="step">ETAPA 1 DE 3</div><h2>Olá, Bruno 👋</h2><p className="lead">Importe a fatura e o extrato exportados pelo Santander. A leitura acontece no seu navegador.</p><div className="uploads"><UploadCard kind="invoice" title="Fatura do cartão" file={files.invoice} onFile={onFile} /><UploadCard kind="statement" title="Extrato bancário" file={files.statement} onFile={onFile} /></div><div className="privacy-note"><span>✓</span><p><strong>Processamento privado</strong><br />Os PDFs não são enviados ao GitHub, ao banco nem armazenados na nuvem.</p></div>{error && <div className="error-box" role="alert">{error}</div>}<button className="primary" disabled={!ready || parsing} onClick={analyze}>{parsing ? "Lendo os documentos…" : ready ? "Extrair movimentações →" : "Importe os dois documentos"}</button>{parsing && <div className="loading-line"><i /></div>}<button className="demo" onClick={startDemo}>Explorar com dados de demonstração</button></section></main>;
 
-  return (
-    <main className="app-shell">
-      <aside className="sidebar">
-        <div className="brand"><span>f</span> fluxo</div>
-        <nav>
-          <button className={tab === "overview" ? "active" : ""} onClick={() => setTab("overview")}>⌂ <span>Visão geral</span></button>
-          <button className={tab === "transactions" ? "active" : ""} onClick={() => setTab("transactions")}>↕ <span>Transações</span></button>
-          <button className={tab === "insights" ? "active" : ""} onClick={() => setTab("insights")}>✦ <span>Insights</span><b>3</b></button>
-        </nav>
-        <button className="new-import" onClick={() => setView("upload")}>＋ Nova importação</button>
-      </aside>
-      <section className="content">
-        <header><div><p className="eyebrow">AGOSTO DE 2026</p><h2>{tab === "overview" ? "Visão geral" : tab === "transactions" ? "Transações" : "Seus insights"}</h2></div><div className="avatar">BR</div></header>
-        {tab === "overview" && <>
-          <div className="summary-grid">
-            <article className="hero-card"><p>Gastos do mês</p><strong>R$ 6.840,00</strong><span className="trend up">↑ 12% em relação a julho</span><div className="spark"><i/><i/><i/><i/><i/><i/><i/><i/></div></article>
-            <article><p>Fatura do cartão</p><strong>R$ 4.920,00</strong><span>vence em 9 dias</span><div className="progress"><i style={{width:"72%"}} /></div></article>
-            <article><p>Saídas da conta</p><strong>R$ 1.920,00</strong><span>débitos, Pix e boletos</span><div className="progress green"><i style={{width:"38%"}} /></div></article>
-          </div>
-          <div className="dashboard-grid">
-            <article className="category-card"><div className="card-title"><div><p className="eyebrow">DISTRIBUIÇÃO</p><h3>Onde você mais gastou</h3></div><button>Detalhes</button></div><div className="category-body"><div className="donut" style={{background:donut}}><span><b>R$ 6.840</b><small>total</small></span></div><div className="legend">{categories.map(c=><div key={c.name}><i style={{background:c.color}}/><span>{c.name}</span><b>{c.value}%</b></div>)}</div></div></article>
-            <article className="saving-card"><span className="bulb">✦</span><p className="eyebrow">OPORTUNIDADE DO MÊS</p><h3>Você pode economizar <em>R$ 620</em></h3><p>Pequenos ajustes em restaurantes e assinaturas podem liberar esse valor.</p><button onClick={() => setTab("insights")}>Ver recomendações →</button></article>
-          </div>
-          <article className="transactions-card"><div className="card-title"><div><p className="eyebrow">MOVIMENTAÇÕES</p><h3>Últimas transações</h3></div><button onClick={() => setTab("transactions")}>Ver todas</button></div>{transactions.slice(0,3).map((t)=><div className="transaction" key={t[0]}><span className="merchant">{t[0][0]}</span><div><b>{t[0]}</b><small>{t[1]} · {t[2]}</small></div><strong>{t[3]}</strong></div>)}</article>
-        </>}
-        {tab === "transactions" && <article className="transactions-card full"><div className="card-title"><div><p className="eyebrow">AGOSTO</p><h3>Transações identificadas</h3></div><button>Filtrar</button></div>{transactions.map((t)=><div className="transaction" key={t[0]}><span className="merchant">{t[0][0]}</span><div><b>{t[0]}</b><small>{t[1]} · {t[2]}</small></div><strong>{t[3]}</strong></div>)}</article>}
-        {tab === "insights" && <div className="insight-list"><article className="alert"><span>↑</span><div><p className="eyebrow">ATENÇÃO</p><h3>Restaurantes subiram 28%</h3><p>Foram R$ 310 a mais do que no mês passado.</p></div></article><article><span>↻</span><div><p className="eyebrow">RECORRÊNCIAS</p><h3>3 assinaturas encontradas</h3><p>Uma delas não teve uso aparente nos últimos meses.</p></div></article><article className="opportunity"><span>✦</span><div><p className="eyebrow">OPORTUNIDADE</p><h3>Economize cerca de R$ 240/mês</h3><p>Reduzindo delivery em dois pedidos por semana.</p><button>Criar meta →</button></div></article></div>}
-        <p className="prototype-note">Prévia com dados de demonstração. A leitura automática do conteúdo dos PDFs será conectada na próxima etapa.</p>
-      </section>
-    </main>
-  );
+  if (view === "review") return <main className="review-page"><header className="review-header"><div className="brand"><span>f</span> fluxo</div><button className="ghost" onClick={() => setView("upload")}>← Trocar arquivos</button></header><section className="review-content"><p className="eyebrow">ETAPA 2 DE 3</p><h1>Revise as movimentações</h1><p className="lead">Encontramos <strong>{transactions.length} movimentações</strong> em {documentStats.pages} páginas. Corrija as categorias antes de gerar o painel.</p>{warnings.map((warning) => <div className="warning-box" key={warning}>⚠ {warning}</div>)}<div className="review-summary"><div><small>Fatura</small><strong>{transactions.filter((item) => item.source === "invoice").length}</strong></div><div><small>Extrato</small><strong>{transactions.filter((item) => item.source === "statement").length}</strong></div><div><small>Linhas analisadas</small><strong>{documentStats.lines}</strong></div></div><div className="review-table"><div className="review-row review-labels"><span>Data</span><span>Descrição</span><span>Categoria</span><span>Valor</span><span /></div>{transactions.map((item) => <div className="review-row" key={item.id}><time>{shortDate(item.date)}</time><input value={item.description} aria-label="Descrição" onChange={(event) => updateTransaction(item.id, { description: event.target.value, category: categorize(event.target.value) })} /><select value={item.category} aria-label="Categoria" onChange={(event) => updateTransaction(item.id, { category: event.target.value as Category })}>{CATEGORY_NAMES.map((name) => <option key={name}>{name}</option>)}</select><strong className={item.amount > 0 ? "income" : ""}>{money(item.amount)}</strong><button aria-label={`Remover ${item.description}`} title="Remover" onClick={() => setTransactions((items) => items.filter((entry) => entry.id !== item.id))}>×</button></div>)}</div><div className="review-actions"><button className="ghost" onClick={() => setView("upload")}>Voltar</button><button className="primary" disabled={!transactions.length} onClick={() => setView("dashboard")}>Confirmar e ver análise →</button></div></section></main>;
+
+  return <main className="app-shell"><aside className="sidebar"><div className="brand"><span>f</span> fluxo</div><nav><button className={tab === "overview" ? "active" : ""} onClick={() => setTab("overview")}>⌂ <span>Visão geral</span></button><button className={tab === "transactions" ? "active" : ""} onClick={() => setTab("transactions")}>↕ <span>Transações</span></button><button className={tab === "insights" ? "active" : ""} onClick={() => setTab("insights")}>✦ <span>Insights</span><b>3</b></button></nav><button className="new-import" onClick={() => setView("upload")}>＋ Nova importação</button></aside><section className="content"><header><div><p className="eyebrow">DADOS IMPORTADOS</p><h2>{tab === "overview" ? "Visão geral" : tab === "transactions" ? "Transações" : "Seus insights"}</h2></div><div className="avatar">BR</div></header>{tab === "overview" && <><div className="summary-grid"><article className="hero-card"><p>Gastos identificados</p><strong>{money(total)}</strong><span>{expenses.length} movimentações de saída</span><div className="spark"><i/><i/><i/><i/><i/><i/><i/><i/></div></article><article><p>Fatura do cartão</p><strong>{money(invoiceTotal)}</strong><span>{expenses.filter((item) => item.source === "invoice").length} compras</span><div className="progress"><i style={{ width: `${total ? invoiceTotal / total * 100 : 0}%` }} /></div></article><article><p>Saídas da conta</p><strong>{money(statementTotal)}</strong><span>débitos, Pix e boletos</span><div className="progress green"><i style={{ width: `${total ? statementTotal / total * 100 : 0}%` }} /></div></article></div><div className="dashboard-grid"><article className="category-card"><div className="card-title"><div><p className="eyebrow">DISTRIBUIÇÃO</p><h3>Onde você mais gastou</h3></div></div><div className="category-body"><div className="donut" style={{ background: donut }}><span><b>{money(total)}</b><small>total</small></span></div><div className="legend">{categoryData.map((item) => <div key={item.name}><i style={{ background: item.color }} /><span>{item.name}</span><b>{item.percentage}%</b></div>)}</div></div></article><article className="saving-card"><span className="bulb">✦</span><p className="eyebrow">MAIOR CATEGORIA</p><h3>{categoryData[0]?.name ?? "Sem gastos"}: <em>{money(categoryData[0]?.value ?? 0)}</em></h3><p>Essa categoria representa {categoryData[0]?.percentage ?? 0}% dos gastos identificados.</p><button onClick={() => setTab("insights")}>Ver recomendações →</button></article></div><TransactionList items={transactions.slice(0, 5)} title="Últimas transações" action={() => setTab("transactions")} /></>}{tab === "transactions" && <TransactionList items={transactions} title="Transações importadas" />}{tab === "insights" && <div className="insight-list"><article className="alert"><span>↑</span><div><p className="eyebrow">CONCENTRAÇÃO</p><h3>{categoryData[0]?.percentage ?? 0}% em {categoryData[0]?.name.toLowerCase() ?? "uma categoria"}</h3><p>Revise os maiores lançamentos dessa categoria para encontrar cortes possíveis.</p></div></article><article><span>↻</span><div><p className="eyebrow">RECORRÊNCIAS</p><h3>{expenses.filter((item) => item.category === "Assinaturas").length} assinaturas identificadas</h3><p>Confira se todos esses serviços continuam sendo utilizados.</p></div></article><article className="opportunity"><span>✦</span><div><p className="eyebrow">META INICIAL</p><h3>Reserve 10% dos gastos variáveis</h3><p>Uma primeira meta possível seria economizar {money(total * .1)} no próximo mês.</p></div></article></div>}<p className="prototype-note">Análise gerada localmente. Revise os lançamentos antes de tomar decisões financeiras.</p></section></main>;
+}
+
+function TransactionList({ items, title, action }: { items: ParsedTransaction[]; title: string; action?: () => void }) {
+  return <article className="transactions-card full"><div className="card-title"><div><p className="eyebrow">MOVIMENTAÇÕES</p><h3>{title}</h3></div>{action && <button onClick={action}>Ver todas</button>}</div>{items.map((item) => <div className="transaction" key={item.id}><span className="merchant">{item.description[0]?.toUpperCase() ?? "?"}</span><div><b>{item.description}</b><small>{item.category} · {shortDate(item.date)} · {item.source === "invoice" ? "Fatura" : "Extrato"}</small></div><strong className={item.amount > 0 ? "income" : ""}>{money(item.amount)}</strong></div>)}</article>;
 }
