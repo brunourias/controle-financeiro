@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { categorize, parseSantanderPdf, type Category, type DocumentKind, type ParsedTransaction } from "../src/lib/pdfParser";
-import { documentExists, firebaseConfigured, hashFile, loadFinancialHistory, loginWithGoogle, logoutFirebase, observeUser, saveFinancialImport, type CloudDocument } from "../src/lib/firebaseClient";
+import { documentExists, firebaseConfigured, hashFile, loadFinancialHistory, loginWithGoogle, logoutFirebase, observeUser, reclassifyFinancialHistory, saveFinancialImport, type CloudDocument } from "../src/lib/firebaseClient";
 
 type FileKind = DocumentKind;
 type View = "upload" | "review" | "dashboard";
@@ -60,8 +60,9 @@ export default function Home() {
       setCloudBusy(true);
       try {
         const history = await loadFinancialHistory(account.uid);
-        setTransactions(history.transactions); setCloudDocuments(history.documents);
-        const latest = history.transactions.map((item) => item.month ?? item.date.slice(0, 7)).sort().at(-1);
+        const corrected = await reclassifyFinancialHistory(account.uid, history.transactions);
+        setTransactions(corrected.transactions); setCloudDocuments(history.documents);
+        const latest = corrected.transactions.map((item) => item.month ?? item.date.slice(0, 7)).sort().at(-1);
         if (latest) setSelectedMonth(latest);
       } finally { setCloudBusy(false); }
     });
@@ -146,3 +147,4 @@ function MonthlyEvolution({ series }: { series: Array<{ month: string; total: nu
 function TransactionList({ items, title, action }: { items: ParsedTransaction[]; title: string; action?: () => void }) {
   return <article className="transactions-card full"><div className="card-title"><div><p className="eyebrow">MOVIMENTAÇÕES</p><h3>{title}</h3></div>{action && <button onClick={action}>Ver todas</button>}</div>{items.length ? items.map((item) => <div className="transaction" key={`${item.documentHash ?? "local"}-${item.id}`}><span className="merchant">{item.description[0]?.toUpperCase() ?? "?"}</span><div><b>{item.description}</b><small>{item.category} · {shortDate(item.date)} · {item.source === "invoice" ? "Fatura" : "Extrato"}</small></div><strong className={item.amount > 0 ? "income" : ""}>{money(item.amount)}</strong></div>) : <p className="empty-state">Nenhuma transação neste período.</p>}</article>;
 }
+
