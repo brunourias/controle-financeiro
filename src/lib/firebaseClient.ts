@@ -1,7 +1,7 @@
 import { getApps, initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut, type User } from "firebase/auth";
 import { collection, doc, getDoc, getDocs, getFirestore, serverTimestamp, writeBatch } from "firebase/firestore";
-import type { DocumentKind, ParsedTransaction } from "./pdfParser";
+import { categorize, type DocumentKind, type ParsedTransaction } from "./pdfParser";
 
 const config = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -60,6 +60,20 @@ export async function loadFinancialHistory(uid: string) {
   };
 }
 
+export async function reclassifyFinancialHistory(uid: string, transactions: ParsedTransaction[]) {
+  if (!db) return { transactions, corrected: 0 };
+  const correctedTransactions = transactions.map((item) => ({ ...item, category: categorize(item.description) }));
+  const changed = correctedTransactions.filter((item, index) => item.category !== transactions[index].category);
+  for (let offset = 0; offset < changed.length; offset += 400) {
+    const batch = writeBatch(db);
+    for (const item of changed.slice(offset, offset + 400)) {
+      batch.update(doc(db, "users", uid, "transactions", item.id), { category: item.category, reclassifiedAt: serverTimestamp() });
+    }
+    await batch.commit();
+  }
+  return { transactions: correctedTransactions, corrected: changed.length };
+}
+
 export async function saveFinancialImport(uid: string, documents: CloudDocument[], transactions: ParsedTransaction[]) {
   if (!db) throw new Error("Firebase ainda não foi configurado.");
   const operations: Array<{ path: string[]; data: Record<string, unknown> }> = [];
@@ -71,3 +85,4 @@ export async function saveFinancialImport(uid: string, documents: CloudDocument[
     await batch.commit();
   }
 }
+
