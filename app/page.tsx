@@ -55,15 +55,30 @@ export default function Home() {
         setCloudDocuments([]);
         setPendingDocuments([]);
         setSelectedMonth("");
+        setView("upload");
         return;
       }
       setCloudBusy(true);
+      setError("");
       try {
         const history = await loadFinancialHistory(account.uid);
-        const corrected = await reclassifyFinancialHistory(account.uid, history.transactions);
-        setTransactions(corrected.transactions); setCloudDocuments(history.documents);
-        const latest = corrected.transactions.map((item) => item.month ?? item.date.slice(0, 7)).sort().at(-1);
+        // Show the saved history first. A background category update must never
+        // prevent the user from seeing transactions that were already saved.
+        setTransactions(history.transactions);
+        setCloudDocuments(history.documents);
+        const latest = history.transactions.map((item) => item.month ?? item.date.slice(0, 7)).sort().at(-1);
         if (latest) setSelectedMonth(latest);
+        if (history.transactions.length || history.documents.length) setView("dashboard");
+
+        try {
+          const corrected = await reclassifyFinancialHistory(account.uid, history.transactions);
+          setTransactions(corrected.transactions);
+        } catch {
+          // The original history is already on screen; retry this non-essential
+          // migration on a later login instead of interrupting the experience.
+        }
+      } catch (caught) {
+        setError(caught instanceof Error ? `Não foi possível carregar seu histórico: ${caught.message}` : "Não foi possível carregar seu histórico salvo. Tente entrar novamente.");
       } finally { setCloudBusy(false); }
     });
   }, []);
