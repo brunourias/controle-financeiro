@@ -37,7 +37,7 @@ const MONTHS: Record<string, number> = {
   jul: 7, ago: 8, set: 9, out: 10, nov: 11, dez: 12,
 };
 
-const SKIP_INVOICE = /(?:total da fatura|pagamento m[ií]nimo|limite dispon[ií]vel|melhor data|saldo anterior|encargos|anuidade|resumo da fatura|vencimento)/i;
+const SKIP_INVOICE = /(?:total da fatura|pagamento m[ií]nimo|pagamento de fatura|limite dispon[ií]vel|melhor data|saldo anterior|encargos|anuidade|resumo da fatura|vencimento|ft-ci|central cob|nosso n[uú]mero|c[oó]digo de barras)/i;
 const SKIP_STATEMENT = /(?:saldo (?:do dia|anterior|dispon[ií]vel|em conta)|resumo|ag[eê]ncia|conta corrente|extrato emitido)/i;
 
 function normalize(value: string) {
@@ -102,6 +102,8 @@ function transactionFromLine(line: string, kind: DocumentKind, index: number): P
   const dated = extractDate(line);
   if (!dated) return null;
   if ((kind === "invoice" ? SKIP_INVOICE : SKIP_STATEMENT).test(dated.rest)) return null;
+  // Full dates on Santander invoices belong to boleto/document metadata, not purchases.
+  if (kind === "invoice" && /^\s*\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4}/.test(line)) return null;
   const amountMatch = dated.rest.match(/(?:R\$\s*)?(-?\d{1,3}(?:\.\d{3})*,\d{2}|-?\d+,\d{2})\s*([DC])?\s*$/i);
   if (!amountMatch || amountMatch.index === undefined) return null;
   const description = normalize(dated.rest.slice(0, amountMatch.index).replace(/\s+\d{2}\/\d{2}\s*$/, ""));
