@@ -97,6 +97,15 @@ export async function updateFinancialTransaction(uid: string, id: string, patch:
   await updateDoc(doc(db, "users", uid, "transactions", id), { ...patch, manuallyReviewed: true, manuallyReviewedAt: serverTimestamp() });
 }
 
+export async function updateMatchingFinancialTransactions(uid: string, ids: string[], patch: Pick<ParsedTransaction, "category">) {
+  if (!db || !ids.length) return;
+  for (let offset = 0; offset < ids.length; offset += 400) {
+    const batch = writeBatch(db);
+    for (const id of ids.slice(offset, offset + 400)) batch.update(doc(db, "users", uid, "transactions", id), { ...patch, manuallyReviewed: true, manuallyReviewedAt: serverTimestamp() });
+    await batch.commit();
+  }
+}
+
 export async function saveFinancialImport(uid: string, documents: CloudDocument[], transactions: ParsedTransaction[]) {
   if (!db) throw new Error("Firebase ainda não foi configurado.");
   // Reprocessing a PDF must replace its previous transactions, otherwise
