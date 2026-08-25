@@ -71,23 +71,15 @@ function extractDate(line: string): { date: string; rest: string } | null {
 }
 
 export function categorize(description: string): Category {
-  const text = description
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  // Serviços de mobilidade podem aparecer junto do nome do estabelecimento na fatura.
-  // Por isso, estes sinais têm prioridade sobre marcas de varejo, como HAVAN.
-  if (/sem parar|conectcar|velo e|tag de pedagio|abastece/.test(text)) return "Transporte";
-  if (/mercado|supermerc|atacad|padaria|restaur|lanch|ifood|delivery|hamburg|pizza|cafe|acougue/.test(text)) return "Alimentação";
-  if (/aluguel|condominio|energia|eletric|agua|gas|internet|telefone|imovel/.test(text)) return "Moradia";
-  if (/uber|99 |taxi|posto|combust|estacion|pedagio|metro|onibus/.test(text)) return "Transporte";
-  if (/netflix|spotify|amazon prime|disney|hbo|youtube|icloud|google one|assinatura/.test(text)) return "Assinaturas";
-  if (/farmacia|drog|hospital|clinica|laborat|medic|odonto|saude/.test(text)) return "Saúde";
-  if (/pix|ted|doc |transfer/.test(text)) return "Transferências";
-  if (/loja|shopping|magazine|amazon|mercado livre|shopee|havan|roupa|calcado/.test(text)) return "Compras";
+  const text = description.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").replace(/\s+/g, " ").trim();
+  // Regras observadas nos extratos e faturas Santander.
+  if (/pix enviado|pix recebido|pagamento de fatura|liquido de vencimento|pagamento de boleto|saque dinheiro|tributos municipais|transfer/.test(text)) return "Transferências";
+  if (/sem parar|conectcar|velo e|tag de pedagio|abastece|uber|taxi|posto|combust|estacion|pedagio|metro|onibus|estapar|blu gestao/.test(text)) return "Transporte";
+  if (/mercado|supermerc|atacad|padaria|restaur|lanch|ifood|delivery|hamburg|pizza|cafe|acougue|alimentacao|dom burger|kfc|blenz|nugali/.test(text)) return "Alimentação";
+  if (/aluguel|condominio|energia|eletric|agua|esgoto|gas|internet|telefone|imovel|credito imobiliario|cabo|tim pos/.test(text)) return "Moradia";
+  if (/netflix|spotify|amazon prime|amazonprime|disney|hbo|youtube|icloud|google one|tinder|roblox|hotmart|skyfit|academia|assinatura/.test(text)) return "Assinaturas";
+  if (/farmacia|drog|hospital|clinica|laborat|medic|odonto|saude|rdsaude/.test(text)) return "Saúde";
+  if (/mercado livre|mercadolivre|shopee|havan|casas bahia|leroy merlin|autozone|benetton|amazon|wallifer|bahia techmix/.test(text)) return "Compras";
   return "Outros";
 }
 
