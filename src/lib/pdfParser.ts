@@ -101,12 +101,17 @@ function signedAmount(kind: DocumentKind, description: string, rawAmount: string
 function transactionFromLine(line: string, kind: DocumentKind, index: number): ParsedTransaction | null {
   const dated = extractDate(line);
   if (!dated) return null;
-  if ((kind === "invoice" ? SKIP_INVOICE : SKIP_STATEMENT).test(dated.rest)) return null;
+  // Santander renders invoice columns on the same extracted text row. Totals such
+  // as "Total de pagamentos" can be appended after a genuine purchase amount.
+  const rest = kind === "invoice"
+    ? dated.rest.split(/\b(?:total de pagamentos|total de compras|total de lan[cç]amentos|total a pagar)\b/i)[0]
+    : dated.rest;
+  if ((kind === "invoice" ? SKIP_INVOICE : SKIP_STATEMENT).test(rest)) return null;
   // Full dates on Santander invoices belong to boleto/document metadata, not purchases.
   if (kind === "invoice" && /^\s*\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4}/.test(line)) return null;
-  const amountMatch = dated.rest.match(/(?:R\$\s*)?(-?\d{1,3}(?:\.\d{3})*,\d{2}|-?\d+,\d{2})\s*([DC])?\s*$/i);
+  const amountMatch = rest.match(/(?:R\$\s*)?(-?\d{1,3}(?:\.\d{3})*,\d{2}|-?\d+,\d{2})\s*([DC])?\s*$/i);
   if (!amountMatch || amountMatch.index === undefined) return null;
-  const description = normalize(dated.rest.slice(0, amountMatch.index).replace(/\s+\d{2}\/\d{2}\s*$/, ""));
+  const description = normalize(rest.slice(0, amountMatch.index).replace(/\s+\d{2}\/\d{2}\s*$/, ""));
   if (description.length < 2) return null;
   const rawAmount = `${amountMatch[1]}${amountMatch[2] ?? ""}`;
   const parsed = parseMoney(rawAmount);
