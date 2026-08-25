@@ -156,6 +156,9 @@ export async function parseSantanderPdf(file: File, kind: DocumentKind): Promise
       if (!("str" in item) || !("transform" in item)) return [];
       return [{ str: item.str, x: item.transform[4], y: item.transform[5] }];
     });
+    // The first page of Santander invoices is a billing summary and boleto.
+    // Purchases start on the following pages; parsing it creates false expenses.
+    if (kind === "invoice" && pageNumber === 1) continue;
     allLines.push(...itemsToLines(items));
   }
 
