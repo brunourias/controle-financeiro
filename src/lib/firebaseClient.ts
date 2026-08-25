@@ -99,6 +99,16 @@ export async function updateFinancialTransaction(uid: string, id: string, patch:
 
 export async function saveFinancialImport(uid: string, documents: CloudDocument[], transactions: ParsedTransaction[]) {
   if (!db) throw new Error("Firebase ainda não foi configurado.");
+  // Reprocessing a PDF must replace its previous transactions, otherwise
+  // corrections to the parser would leave old incorrect entries in the history.
+  const replacing = new Set(documents.map((item) => item.hash));
+  const existing = await getDocs(collection(db, "users", uid, "transactions"));
+  const oldEntries = existing.docs.filter((entry) => replacing.has(String(entry.data().documentHash ?? "")));
+  for (let offset = 0; offset < oldEntries.length; offset += 400) {
+    const batch = writeBatch(db);
+    for (const entry of oldEntries.slice(offset, offset + 400)) batch.delete(entry.ref);
+    await batch.commit();
+  }
   const operations: Array<{ path: string[]; data: Record<string, unknown> }> = [];
   for (const documentRecord of documents) operations.push({ path: ["users", uid, "documents", documentRecord.hash], data: { ...documentRecord, importedAt: serverTimestamp() } });
   for (const item of transactions) operations.push({ path: ["users", uid, "transactions", `${item.documentHash}-${item.id}`], data: { ...item, importedAt: serverTimestamp() } });
