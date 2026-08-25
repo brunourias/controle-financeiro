@@ -149,7 +149,7 @@ export default function Home() {
         seen.add(hash);
         const result = await parseSantanderPdf(entry.file, entry.kind);
         pages += result.pageCount; lines += result.lineCount; batchWarnings.push(...result.warnings);
-        batchDocuments.push({ hash, name: entry.file.name, kind: entry.kind, month: result.month, pageCount: result.pageCount, transactionCount: result.transactions.length });
+        batchDocuments.push({ hash, name: entry.file.name, kind: entry.kind, month: result.month, pageCount: result.pageCount, transactionCount: result.transactions.length, invoiceMonthNormalized: entry.kind === "invoice" });
         batchTransactions.push(...result.transactions.map((item) => { const rule = classificationRules.find((entry) => merchantKey(item.description).includes(entry.pattern)); return { ...item, category: rule?.category ?? item.category, month: result.month, documentHash: hash, documentName: entry.file.name }; }));
       }
       if (duplicateCount) batchWarnings.push(`${duplicateCount} documento${duplicateCount > 1 ? "s repetidos foram ignorados" : " repetido foi ignorado"}.`);
