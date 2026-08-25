@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { categorize, parseSantanderPdf, type Category, type DocumentKind, type ParsedTransaction } from "../src/lib/pdfParser";
-import { documentExists, firebaseConfigured, hashFile, loadFinancialHistory, loginWithGoogle, logoutFirebase, normalizeSavedInvoiceMonths, observeUser, reclassifyFinancialHistory, saveFinancialImport, updateFinancialTransaction, updateMatchingFinancialTransactions, type CloudDocument } from "../src/lib/firebaseClient";
+import { documentExists, firebaseConfigured, hashFile, loadFinancialHistory, loginWithGoogle, logoutFirebase, normalizeSavedInvoiceMonths, observeUser, reclassifyFinancialHistory, saveFinancialImport, updateMatchingFinancialTransactions, type CloudDocument } from "../src/lib/firebaseClient";
 
 type FileKind = DocumentKind;
 type View = "upload" | "review" | "dashboard";
