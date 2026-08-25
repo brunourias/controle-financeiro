@@ -24,6 +24,7 @@ export type CloudDocument = {
   month: string;
   pageCount: number;
   transactionCount: number;
+  invoiceMonthNormalized?: boolean;
 };
 
 export function observeUser(callback: (user: User | null) => void) {
@@ -58,6 +59,23 @@ export async function loadFinancialHistory(uid: string) {
     documents: documentsSnapshot.docs.map((entry) => entry.data() as CloudDocument),
     transactions: transactionsSnapshot.docs.map((entry) => ({ ...entry.data(), id: entry.id }) as ParsedTransaction).sort((a, b) => b.date.localeCompare(a.date)),
   };
+}
+
+export async function normalizeSavedInvoiceMonths(uid: string, documents: CloudDocument[], transactions: ParsedTransaction[]) {
+  if (!db) return { documents, transactions };
+  const legacyInvoices = documents.filter((item) => item.kind === "invoice" && !item.invoiceMonthNormalized);
+  if (!legacyInvoices.length) return { documents, transactions };
+  const monthByHash = new Map(legacyInvoices.map((item) => {
+    const date = new Date(`${item.month}-01T12:00:00`);
+    date.setMonth(date.getMonth() - 1);
+    return [item.hash, `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`];
+  }));
+  const batch = writeBatch(db);
+  for (const item of legacyInvoices) batch.update(doc(db, "users", uid, "documents", item.hash), { month: monthByHash.get(item.hash), invoiceMonthNormalized: true });
+  const corrected = transactions.map((item) => monthByHash.has(item.documentHash ?? "") ? { ...item, month: monthByHash.get(item.documentHash ?? "")! } : item);
+  for (const item of corrected.filter((item) => monthByHash.has(item.documentHash ?? ""))) batch.update(doc(db, "users", uid, "transactions", item.id), { month: item.month });
+  await batch.commit();
+  return { documents: documents.map((item) => monthByHash.has(item.hash) ? { ...item, month: monthByHash.get(item.hash)!, invoiceMonthNormalized: true } : item), transactions: corrected };
 }
 
 export async function reclassifyFinancialHistory(uid: string, transactions: ParsedTransaction[]) {
