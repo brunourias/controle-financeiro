@@ -156,7 +156,7 @@ export default function Home() {
       }
       if (duplicateCount) batchWarnings.push(`${duplicateCount} documento${duplicateCount > 1 ? "s repetidos foram ignorados" : " repetido foi ignorado"}.`);
       if (!batchTransactions.length) throw new Error(duplicateCount ? "Os mesmos arquivos foram selecionados mais de uma vez nesta importação." : "Não encontramos movimentações nesses documentos.");
-      setTransactions((history) => [...history, ...batchTransactions].sort((a, b) => b.date.localeCompare(a.date)));
+      setTransactions((history) => [...history.filter((item) => !batchDocuments.some((document) => document.hash === item.documentHash)), ...batchTransactions].sort((a, b) => b.date.localeCompare(a.date)));
       setPendingDocuments(batchDocuments); setWarnings(batchWarnings); setDocumentStats({ pages, lines });
       setSelectedMonth(batchDocuments.map((document) => document.month).sort().at(-1) ?? ""); setView("review");
     } catch (caught) { setError(caught instanceof Error ? caught.message : "Falha inesperada ao analisar os PDFs."); }
