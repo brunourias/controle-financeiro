@@ -109,7 +109,11 @@ function transactionFromLine(line: string, kind: DocumentKind, index: number): P
   if ((kind === "invoice" ? SKIP_INVOICE : SKIP_STATEMENT).test(rest)) return null;
   // Full dates on Santander invoices belong to boleto/document metadata, not purchases.
   if (kind === "invoice" && /^\s*\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4}/.test(line)) return null;
-  const amountMatch = rest.match(/(?:R\$\s*)?(-?\d{1,3}(?:\.\d{3})*,\d{2}|-?\d+,\d{2})\s*([DC])?\s*$/i);
+  const moneyPattern = /(?:R\$\s*)?(-?\d{1,3}(?:\.\d{3})*,\d{2}|-?\d+,\d{2})\s*([DC-])?/gi;
+  const matches = Array.from(rest.matchAll(moneyPattern));
+  // Statement rows end with the running account balance. The first monetary
+  // value is the transaction amount; invoice rows use their final amount.
+  const amountMatch = kind === "statement" ? matches[0] : matches.at(-1);
   if (!amountMatch || amountMatch.index === undefined) return null;
   const description = normalize(rest.slice(0, amountMatch.index).replace(/\s+\d{2}\/\d{2}\s*$/, ""));
   if (description.length < 2) return null;
