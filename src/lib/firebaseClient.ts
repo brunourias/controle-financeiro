@@ -1,6 +1,6 @@
 import { getApps, initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut, type User } from "firebase/auth";
-import { collection, doc, getDoc, getDocs, getFirestore, serverTimestamp, writeBatch } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, getFirestore, serverTimestamp, updateDoc, writeBatch } from "firebase/firestore";
 import { categorize, type DocumentKind, type ParsedTransaction } from "./pdfParser";
 
 const config = {
@@ -72,6 +72,11 @@ export async function reclassifyFinancialHistory(uid: string, transactions: Pars
     await batch.commit();
   }
   return { transactions: correctedTransactions, corrected: changed.length };
+}
+
+export async function updateFinancialTransaction(uid: string, id: string, patch: Pick<ParsedTransaction, "description" | "category">) {
+  if (!db) throw new Error("Firebase ainda não foi configurado.");
+  await updateDoc(doc(db, "users", uid, "transactions", id), { ...patch, manuallyReviewedAt: serverTimestamp() });
 }
 
 export async function saveFinancialImport(uid: string, documents: CloudDocument[], transactions: ParsedTransaction[]) {
