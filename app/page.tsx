@@ -145,15 +145,17 @@ export default function Home() {
       const seen = new Set<string>(); let duplicateCount = 0, pages = 0, lines = 0;
       for (const entry of selected) {
         const hash = await hashFile(entry.file);
-        if (seen.has(hash) || pendingDocuments.some((document) => document.hash === hash) || cloudDocuments.some((document) => document.hash === hash) || (user && await documentExists(user.uid, hash))) { duplicateCount += 1; continue; }
+        if (seen.has(hash) || pendingDocuments.some((document) => document.hash === hash)) { duplicateCount += 1; continue; }
+        const alreadySaved = cloudDocuments.some((document) => document.hash === hash) || Boolean(user && await documentExists(user.uid, hash));
         seen.add(hash);
         const result = await parseSantanderPdf(entry.file, entry.kind);
+        if (alreadySaved) batchWarnings.push(`${entry.file.name}: documento já existente; seus dados serão atualizados com a nova leitura.`);
         pages += result.pageCount; lines += result.lineCount; batchWarnings.push(...result.warnings);
         batchDocuments.push({ hash, name: entry.file.name, kind: entry.kind, month: result.month, pageCount: result.pageCount, transactionCount: result.transactions.length, invoiceMonthNormalized: entry.kind === "invoice" });
         batchTransactions.push(...result.transactions.map((item) => { const rule = classificationRules.find((entry) => merchantKey(item.description).includes(entry.pattern)); return { ...item, category: rule?.category ?? item.category, month: result.month, documentHash: hash, documentName: entry.file.name }; }));
       }
       if (duplicateCount) batchWarnings.push(`${duplicateCount} documento${duplicateCount > 1 ? "s repetidos foram ignorados" : " repetido foi ignorado"}.`);
-      if (!batchTransactions.length) throw new Error(duplicateCount ? "Todos os documentos selecionados já estão no seu histórico." : "Não encontramos movimentações nesses documentos.");
+      if (!batchTransactions.length) throw new Error(duplicateCount ? "Os mesmos arquivos foram selecionados mais de uma vez nesta importação." : "Não encontramos movimentações nesses documentos.");
       setTransactions((history) => [...history, ...batchTransactions].sort((a, b) => b.date.localeCompare(a.date)));
       setPendingDocuments(batchDocuments); setWarnings(batchWarnings); setDocumentStats({ pages, lines });
       setSelectedMonth(batchDocuments.map((document) => document.month).sort().at(-1) ?? ""); setView("review");
