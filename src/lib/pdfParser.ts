@@ -149,6 +149,7 @@ export async function parseSantanderPdf(file: File, kind: DocumentKind): Promise
   }
 
   const allLines: string[] = [];
+  const invoiceHeaderLines: string[] = [];
   for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
     const page = await document.getPage(pageNumber);
     const content = await page.getTextContent();
@@ -158,8 +159,9 @@ export async function parseSantanderPdf(file: File, kind: DocumentKind): Promise
     });
     // The first page of Santander invoices is a billing summary and boleto.
     // Purchases start on the following pages; parsing it creates false expenses.
-    if (kind === "invoice" && pageNumber === 1) continue;
-    allLines.push(...itemsToLines(items));
+    const pageLines = itemsToLines(items);
+    if (kind === "invoice" && pageNumber === 1) { invoiceHeaderLines.push(...pageLines); continue; }
+    allLines.push(...pageLines);
   }
 
   if (allLines.length < 5) {
@@ -175,7 +177,7 @@ export async function parseSantanderPdf(file: File, kind: DocumentKind): Promise
   if (unique.length && unique.length < 3) warnings.push("Poucas movimentações foram reconhecidas; revise os resultados antes de continuar.");
   // On Santander invoices the due date is often on a different text row from
   // its label. The invoice belongs to the month that closed before that date.
-  const dueDate = allLines.join(" ").match(/vencimento[\s\S]{0,120}?(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})/i);
+  const dueDate = (kind === "invoice" ? invoiceHeaderLines : allLines).join(" ").match(/vencimento[\s\S]{0,120}?(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})/i);
   const filenameDate = file.name.match(/(?:^|\D)(20\d{2})[-_. ]?(0[1-9]|1[0-2])(?:\D|$)/) ?? file.name.match(/(?:^|\D)(0[1-9]|1[0-2])[-_. ]?(20\d{2})(?:\D|$)/);
   const transactionMonths = unique.map((item) => item.date.slice(0, 7));
   const mostCommonMonth = Array.from(new Set(transactionMonths)).sort((a, b) => transactionMonths.filter((month) => month === b).length - transactionMonths.filter((month) => month === a).length)[0];
