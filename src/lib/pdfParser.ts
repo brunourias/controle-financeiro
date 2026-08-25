@@ -168,14 +168,18 @@ export async function parseSantanderPdf(file: File, kind: DocumentKind): Promise
   const warnings: string[] = [];
   if (!unique.length) warnings.push("Nenhuma movimentação reconhecida. O layout deste PDF pode ser diferente do padrão esperado.");
   if (unique.length && unique.length < 3) warnings.push("Poucas movimentações foram reconhecidas; revise os resultados antes de continuar.");
-  const dueDate = allLines.map((line) => line.match(/vencimento\D{0,20}(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})/i)).find(Boolean);
+  // On Santander invoices the due date is often on a different text row from
+  // its label. The invoice belongs to the month that closed before that date.
+  const dueDate = allLines.join(" ").match(/vencimento[\s\S]{0,120}?(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})/i);
   const filenameDate = file.name.match(/(?:^|\D)(20\d{2})[-_. ]?(0[1-9]|1[0-2])(?:\D|$)/) ?? file.name.match(/(?:^|\D)(0[1-9]|1[0-2])[-_. ]?(20\d{2})(?:\D|$)/);
   const transactionMonths = unique.map((item) => item.date.slice(0, 7));
   const mostCommonMonth = Array.from(new Set(transactionMonths)).sort((a, b) => transactionMonths.filter((month) => month === b).length - transactionMonths.filter((month) => month === a).length)[0];
   let month = mostCommonMonth ?? new Date().toISOString().slice(0, 7);
   if (kind === "invoice" && dueDate) {
-    const year = dueDate[3].length === 2 ? `20${dueDate[3]}` : dueDate[3];
-    month = `${year}-${dueDate[2].padStart(2, "0")}`;
+    const year = Number(dueDate[3].length === 2 ? `20${dueDate[3]}` : dueDate[3]);
+    const dueMonth = Number(dueDate[2]);
+    const closing = new Date(year, dueMonth - 2, 1);
+    month = `${closing.getFullYear()}-${String(closing.getMonth() + 1).padStart(2, "0")}`;
   } else if (filenameDate) {
     month = filenameDate[1].length === 4 ? `${filenameDate[1]}-${filenameDate[2]}` : `${filenameDate[2]}-${filenameDate[1]}`;
   }
