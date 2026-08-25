@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { categorize, parseSantanderPdf, type Category, type DocumentKind, type ParsedTransaction } from "../src/lib/pdfParser";
-import { documentExists, firebaseConfigured, hashFile, loadFinancialHistory, loginWithGoogle, logoutFirebase, normalizeSavedInvoiceMonths, observeUser, reclassifyFinancialHistory, saveFinancialImport, updateFinancialTransaction, type CloudDocument } from "../src/lib/firebaseClient";
+import { documentExists, firebaseConfigured, hashFile, loadFinancialHistory, loginWithGoogle, logoutFirebase, normalizeSavedInvoiceMonths, observeUser, reclassifyFinancialHistory, saveFinancialImport, updateFinancialTransaction, updateMatchingFinancialTransactions, type CloudDocument } from "../src/lib/firebaseClient";
 
 type FileKind = DocumentKind;
 type View = "upload" | "review" | "dashboard";
@@ -175,9 +175,13 @@ export default function Home() {
     } else setView("dashboard");
   };
   const saveClassification = (item: ParsedTransaction, patch: Pick<ParsedTransaction, "description" | "category">) => {
-    setTransactions((items) => items.map((entry) => entry.id === item.id ? { ...entry, ...patch, confidence: "alta" } : entry));
-    setClassificationRules((rules) => rules.some((rule) => rule.pattern === merchantKey(patch.description) && rule.category === patch.category) ? rules : [...rules, { pattern: merchantKey(patch.description), category: patch.category }]);
-    if (user && firebaseConfigured) updateFinancialTransaction(user.uid, item.id, patch).catch((caught) => setError(caught instanceof Error ? caught.message : "Não foi possível salvar a classificação."));
+    const pattern = merchantKey(item.description);
+    setTransactions((items) => items.map((entry) => merchantKey(entry.description) === pattern ? { ...entry, category: patch.category, confidence: "alta" } : entry));
+    setClassificationRules((rules) => rules.some((rule) => rule.pattern === pattern && rule.category === patch.category) ? rules : [...rules, { pattern, category: patch.category }]);
+    if (user && firebaseConfigured) {
+      const matchingIds = transactions.filter((entry) => merchantKey(entry.description) === pattern).map((entry) => entry.id);
+      updateMatchingFinancialTransactions(user.uid, matchingIds, { category: patch.category }).catch((caught) => setError(caught instanceof Error ? caught.message : "Não foi possível salvar a classificação."));
+    }
   };
     const startDemo = () => { setTransactions(DEMO_TRANSACTIONS); setFiles({ invoice: [], statement: [] }); setSelectedMonth("2026-08"); setView("dashboard"); };
 
