@@ -1,4 +1,4 @@
-const CACHE = "fluxo-shell-v3";
+const CACHE = "fluxo-shell-v4";
 const BASE = self.registration.scope;
 const SHELL = [BASE, `${BASE}manifest.webmanifest`, `${BASE}favicon.svg`];
 
