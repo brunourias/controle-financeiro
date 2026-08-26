@@ -61,7 +61,7 @@ export default function Home() {
   const ready = files.invoice.length + files.statement.length > 0;
 
   useEffect(() => {
-    if ("serviceWorker" in navigator) navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => undefined);
+    if ("serviceWorker" in navigator) navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`, { updateViaCache: "none" }).then((registration) => registration.update()).catch(() => undefined);
     return observeUser(async (account) => {
       setUser(account ? { uid: account.uid, displayName: account.displayName, email: account.email } : null);
       if (!account) {
