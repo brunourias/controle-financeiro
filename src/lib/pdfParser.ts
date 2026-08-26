@@ -6,7 +6,7 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 ).toString();
 
 export type DocumentKind = "invoice" | "statement";
-export type Category = "Alimentação" | "Moradia" | "Transporte" | "Assinaturas" | "Saúde" | "Compras" | "PIX recebido" | "PIX enviado" | "Transferência recebida" | "Transferência enviada" | "Boleto" | "Renda" | "Outros";
+export type Category = "Alimentação" | "Moradia" | "Sem Parar" | "Abastecimento" | "Assinaturas" | "Saúde" | "Compras" | "PIX recebido" | "PIX enviado" | "Transferência recebida" | "Transferência enviada" | "Boleto" | "Renda" | "Outros";
 
 export type ParsedTransaction = {
   id: string;
@@ -79,7 +79,9 @@ export function categorize(description: string): Category {
   if (/pix enviado/.test(text)) return "PIX enviado";
   if (/transferencia recebida|ted recebido|transfer recebido/.test(text)) return "Transferência recebida";
   if (/transferencia enviada|ted enviado|transfer enviado|pagamento de fatura|saque dinheiro|tributos municipais/.test(text)) return "Transferência enviada";
-  if (/sem parar|conectcar|velo e|tag de pedagio|abastece|uber|taxi|posto|combust|estacion|pedagio|metro|onibus|estapar|blu gestao/.test(text)) return "Transporte";
+  if (/sem parar|conectcar|velo e|tag de pedagio|pedagio/.test(text)) return "Sem Parar";
+  if (/abastece|posto|combust/.test(text)) return "Abastecimento";
+  if (/uber|taxi|estacion|metro|onibus|estapar|blu gestao/.test(text)) return "Outros";
   if (/mercado|supermerc|atacad|padaria|restaur|lanch|ifood|delivery|hamburg|pizza|cafe|acougue|alimentacao|dom burger|kfc|blenz|nugali/.test(text)) return "Alimentação";
   if (/aluguel|condominio|energia|eletric|agua|esgoto|gas|internet|telefone|imovel|credito imobiliario|cabo|tim pos/.test(text)) return "Moradia";
   if (/netflix|spotify|amazon prime|amazonprime|disney|hbo|youtube|icloud|google one|tinder|roblox|hotmart|skyfit|academia|assinatura/.test(text)) return "Assinaturas";
