@@ -76,7 +76,7 @@ export function categorize(description: string): Category {
   if (/liquido de vencimento|salario|folha de pagamento/.test(text)) return "Renda";
   if (/pagamento de boleto/.test(text)) return "Boleto";
   if (/pix recebido/.test(text)) return "PIX recebido";
-  if (/pix enviado/.test(text)) return "PIX enviado";
+  if (/^pix\b|pix enviado/.test(text)) return "PIX enviado";
   if (/transferencia recebida|ted recebido|transfer recebido/.test(text)) return "Transferência recebida";
   if (/transferencia enviada|ted enviado|transfer enviado|pagamento de fatura|saque dinheiro|tributos municipais/.test(text)) return "Transferência enviada";
   if (/sem parar|conectcar|velo e|tag de pedagio|pedagio/.test(text)) return "Sem Parar";
