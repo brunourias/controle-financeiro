@@ -6,7 +6,7 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 ).toString();
 
 export type DocumentKind = "invoice" | "statement";
-export type Category = "Alimentação" | "Moradia" | "Transporte" | "Assinaturas" | "Saúde" | "Compras" | "Transferências" | "Boleto" | "Renda" | "Outros";
+export type Category = "Alimentação" | "Moradia" | "Transporte" | "Assinaturas" | "Saúde" | "Compras" | "PIX recebido" | "PIX enviado" | "Transferência recebida" | "Transferência enviada" | "Boleto" | "Renda" | "Outros";
 
 export type ParsedTransaction = {
   id: string;
@@ -75,7 +75,10 @@ export function categorize(description: string): Category {
   // Regras observadas nos extratos e faturas Santander.
   if (/liquido de vencimento|salario|folha de pagamento/.test(text)) return "Renda";
   if (/pagamento de boleto/.test(text)) return "Boleto";
-  if (/pix enviado|pix recebido|pagamento de fatura|saque dinheiro|tributos municipais|transfer/.test(text)) return "Transferências";
+  if (/pix recebido/.test(text)) return "PIX recebido";
+  if (/pix enviado/.test(text)) return "PIX enviado";
+  if (/transferencia recebida|ted recebido|transfer recebido/.test(text)) return "Transferência recebida";
+  if (/transferencia enviada|ted enviado|transfer enviado|pagamento de fatura|saque dinheiro|tributos municipais/.test(text)) return "Transferência enviada";
   if (/sem parar|conectcar|velo e|tag de pedagio|abastece|uber|taxi|posto|combust|estacion|pedagio|metro|onibus|estapar|blu gestao/.test(text)) return "Transporte";
   if (/mercado|supermerc|atacad|padaria|restaur|lanch|ifood|delivery|hamburg|pizza|cafe|acougue|alimentacao|dom burger|kfc|blenz|nugali/.test(text)) return "Alimentação";
   if (/aluguel|condominio|energia|eletric|agua|esgoto|gas|internet|telefone|imovel|credito imobiliario|cabo|tim pos/.test(text)) return "Moradia";
