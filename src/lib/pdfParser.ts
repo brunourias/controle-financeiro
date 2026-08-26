@@ -86,7 +86,7 @@ export function categorize(description: string): Category {
 function signedAmount(kind: DocumentKind, description: string, rawAmount: string, parsed: number) {
   if (kind === "invoice") return -Math.abs(parsed);
   if (/[DC-]$/i.test(rawAmount) || /^-/.test(rawAmount.trim())) return parsed;
-  const credit = /recebid|cr[eé]dito|dep[oó]sito|sal[aá]rio|estorno|resgate|rendimento/i.test(description);
+  const credit = /recebid|cr[eé]dito|dep[oó]sito|sal[aá]rio|l[ií]quido de vencimento|estorno|resgate|rendimento/i.test(description);
   return credit ? Math.abs(parsed) : -Math.abs(parsed);
 }
 
