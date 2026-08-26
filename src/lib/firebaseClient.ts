@@ -61,6 +61,26 @@ export async function loadFinancialHistory(uid: string) {
   };
 }
 
+export async function normalizeSavedStatementAmounts(uid: string, transactions: ParsedTransaction[]) {
+  if (!db) return transactions;
+  const trailingAmount = /\s*-\s*(\d{1,3}(?:\.\d{3})*,\d{2})-\s*$/;
+  const corrected = transactions.map((item) => {
+    if (item.source !== "statement" || item.amount >= 0) return item;
+    const match = item.description.match(trailingAmount);
+    if (!match) return item;
+    const amount = -Math.abs(Number(match[1].replace(/\./g, "").replace(",", ".")));
+    if (!Number.isFinite(amount) || Math.abs(amount) === Math.abs(item.amount)) return item;
+    return { ...item, amount, description: item.description.replace(trailingAmount, "").trim() };
+  });
+  const changed = corrected.filter((item, index) => item.amount !== transactions[index].amount || item.description !== transactions[index].description);
+  for (let offset = 0; offset < changed.length; offset += 400) {
+    const batch = writeBatch(db);
+    for (const item of changed.slice(offset, offset + 400)) batch.update(doc(db, "users", uid, "transactions", item.id), { amount: item.amount, description: item.description, correctedStatementAmountAt: serverTimestamp() });
+    await batch.commit();
+  }
+  return corrected;
+}
+
 export async function normalizeSavedIncomeSigns(uid: string, transactions: ParsedTransaction[]) {
   if (!db) return transactions;
   const corrected = transactions.map((item) => /liquido de vencimento/i.test(item.description) && item.amount < 0 ? { ...item, amount: Math.abs(item.amount) } : item);
