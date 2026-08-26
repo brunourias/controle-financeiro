@@ -92,7 +92,10 @@ export async function normalizeSavedInvoiceMonths(uid: string, documents: CloudD
 
 export async function reclassifyFinancialHistory(uid: string, transactions: ParsedTransaction[]) {
   if (!db) return { transactions, corrected: 0 };
-  const correctedTransactions = transactions.map((item) => (item as ParsedTransaction & { manuallyReviewed?: boolean }).manuallyReviewed ? item : ({ ...item, category: categorize(item.description) }));
+  const correctedTransactions = transactions.map((item) => {
+    const legacyTransport = item.category === ("Transporte" as unknown as ParsedTransaction["category"]);
+    return (item as ParsedTransaction & { manuallyReviewed?: boolean }).manuallyReviewed && !legacyTransport ? item : ({ ...item, category: categorize(item.description) });
+  });
   const changed = correctedTransactions.filter((item, index) => item.category !== transactions[index].category);
   for (let offset = 0; offset < changed.length; offset += 400) {
     const batch = writeBatch(db);
