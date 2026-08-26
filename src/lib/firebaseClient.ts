@@ -117,7 +117,8 @@ export async function reclassifyFinancialHistory(uid: string, transactions: Pars
   const correctedTransactions = transactions.map((item) => {
     const legacyTransport = item.category === ("Transporte" as unknown as ParsedTransaction["category"]);
     const legacyPhonePlan = /tim pos|tim controle|tim pre/i.test(item.description) && item.category !== "Plano celular";
-    return (item as ParsedTransaction & { manuallyReviewed?: boolean }).manuallyReviewed && !legacyTransport && !legacyPhonePlan ? item : ({ ...item, category: categorize(item.description) });
+    const legacyPix = /^pix\b/i.test(item.description) && !/pix recebido/i.test(item.description) && item.category !== "PIX enviado";
+    return (item as ParsedTransaction & { manuallyReviewed?: boolean }).manuallyReviewed && !legacyTransport && !legacyPhonePlan && !legacyPix ? item : ({ ...item, category: categorize(item.description) });
   });
   const changed = correctedTransactions.filter((item, index) => item.category !== transactions[index].category);
   for (let offset = 0; offset < changed.length; offset += 400) {
