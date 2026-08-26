@@ -61,6 +61,18 @@ export async function loadFinancialHistory(uid: string) {
   };
 }
 
+export async function normalizeSavedIncomeSigns(uid: string, transactions: ParsedTransaction[]) {
+  if (!db) return transactions;
+  const corrected = transactions.map((item) => /liquido de vencimento/i.test(item.description) && item.amount < 0 ? { ...item, amount: Math.abs(item.amount) } : item);
+  const changed = corrected.filter((item, index) => item.amount !== transactions[index].amount);
+  for (let offset = 0; offset < changed.length; offset += 400) {
+    const batch = writeBatch(db);
+    for (const item of changed.slice(offset, offset + 400)) batch.update(doc(db, "users", uid, "transactions", item.id), { amount: item.amount, correctedIncomeAt: serverTimestamp() });
+    await batch.commit();
+  }
+  return corrected;
+}
+
 export async function normalizeSavedInvoiceMonths(uid: string, documents: CloudDocument[], transactions: ParsedTransaction[]) {
   if (!db) return { documents, transactions };
   const legacyInvoices = documents.filter((item) => item.kind === "invoice" && !item.invoiceMonthNormalized);
