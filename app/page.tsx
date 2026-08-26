@@ -10,7 +10,7 @@ type AppUser = { uid: string; displayName: string | null; email: string | null }
 const CATEGORY_META: Record<Category, { color: string }> = {
   "Alimentação": { color: "#073b72" }, "Moradia": { color: "#179765" }, "Transporte": { color: "#ff675d" },
   "Assinaturas": { color: "#7654c8" }, "Saúde": { color: "#e44f87" }, "Compras": { color: "#d88c20" },
-  "Transferências": { color: "#2e78b7" }, "Boleto": { color: "#9b6e00" }, "Renda": { color: "#159465" }, "Outros": { color: "#9aa5b1" },
+  "PIX recebido": { color: "#159465" }, "PIX enviado": { color: "#2e78b7" }, "Transferência recebida": { color: "#4b9b76" }, "Transferência enviada": { color: "#4a72b8" }, "Boleto": { color: "#9b6e00" }, "Renda": { color: "#159465" }, "Outros": { color: "#9aa5b1" },
 };
 const CATEGORY_NAMES = Object.keys(CATEGORY_META) as Category[];
 const money = (value: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
