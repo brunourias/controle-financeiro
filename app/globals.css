@@ -41,3 +41,5 @@
 .back-overview{display:inline-flex;align-items:center;gap:6px;margin-bottom:12px!important;padding:8px 11px!important;border:1px solid #b9c9d8!important;border-radius:8px!important;background:#fff!important;color:var(--navy)!important;box-shadow:0 2px 6px #173b5d12;transition:.15s ease}.back-overview:hover{border-color:var(--green)!important;background:#f2faf6!important;color:#096b4a!important;transform:translateX(-2px)}
 
 .insight-list .clickable-insight{display:grid;width:100%;grid-template-columns:auto 1fr;gap:15px;text-align:left;color:inherit;cursor:pointer;font:inherit}.insight-list .clickable-insight:hover{border-color:#76c9a7;background:#f7fcf9;transform:translateY(-1px)}.clickable-insight p b{color:var(--green);white-space:nowrap}
+
+.evolution-help{margin:8px 0 0;color:var(--muted);font-size:12px}.evolution-chart{overflow-y:hidden!important;padding-bottom:28px!important}.evolution-legend{padding-top:16px!important;padding-bottom:2px}.evolution-legend span{padding:4px 7px;border-radius:999px;background:#f4f7f9;color:var(--ink)!important;font-weight:700}.evolution-legend i{flex:0 0 auto}
