@@ -113,7 +113,7 @@ export default function Home() {
   const statementTotal = Math.abs(expenses.filter((item) => item.source === "statement").reduce((sum, item) => sum + item.amount, 0));
   const total = invoiceTotal + statementTotal;
   const detectedIncome = visibleTransactions.filter((item) => item.amount > 0).reduce((sum, item) => sum + item.amount, 0);
-  const categoryData = useMemo(() => CATEGORY_NAMES.map((name) => { const value = Math.abs(expenses.filter((item) => item.category === name).reduce((sum, item) => sum + item.amount, 0)); return { name, value, percentage: total ? Math.round(value / total * 100) : 0, color: CATEGORY_META[name].color }; }).filter((item) => item.value > 0).sort((a, b) => b.value - a.value), [expenses, total]);
+  const categoryData = useMemo(() => CATEGORY_NAMES.map((name) => { const value = Math.abs(expenses.filter((item) => item.category === name).reduce((sum, item) => sum + item.amount, 0)); return { name, value, percentage: total ? Math.round(value / total * 100) : 0, color: CATEGORY_META[name].color }; }).sort((a, b) => b.value - a.value), [expenses, total]);
   const donut = `conic-gradient(${categoryData.map((item, index) => { const start = categoryData.slice(0, index).reduce((sum, entry) => sum + entry.percentage, 0); return `${item.color} ${start}% ${start + item.percentage}%`; }).join(",") || "#e9eef3 0 100%"})`;
   const pendingHashes = useMemo(() => new Set(pendingDocuments.map((document) => document.hash)), [pendingDocuments]);
   const reviewTransactions = useMemo(() => transactions.filter((item) => item.documentHash && pendingHashes.has(item.documentHash)), [transactions, pendingHashes]);
