@@ -6,7 +6,7 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 ).toString();
 
 export type DocumentKind = "invoice" | "statement";
-export type Category = "Alimentação" | "Moradia" | "Sem Parar" | "Abastecimento" | "Assinaturas" | "Saúde" | "Compras" | "PIX recebido" | "PIX enviado" | "Transferência recebida" | "Transferência enviada" | "Boleto" | "Renda" | "Outros";
+export type Category = "Alimentação" | "Moradia" | "Sem Parar" | "Abastecimento" | "Assinaturas" | "Saúde" | "Compras" | "PIX recebido" | "PIX enviado" | "Transferência recebida" | "Transferência enviada" | "Boleto" | "Plano celular" | "Renda" | "Outros";
 
 export type ParsedTransaction = {
   id: string;
@@ -82,6 +82,7 @@ export function categorize(description: string): Category {
   if (/sem parar|conectcar|velo e|tag de pedagio|pedagio/.test(text)) return "Sem Parar";
   if (/abastece|posto|combust/.test(text)) return "Abastecimento";
   if (/uber|taxi|estacion|metro|onibus|estapar|blu gestao/.test(text)) return "Outros";
+  if (/tim pos|tim controle|tim pre|claro pos|vivo pos|oi pos/.test(text)) return "Plano celular";
   if (/mercado|supermerc|atacad|padaria|restaur|lanch|ifood|delivery|hamburg|pizza|cafe|acougue|alimentacao|dom burger|kfc|blenz|nugali/.test(text)) return "Alimentação";
   if (/aluguel|condominio|energia|eletric|agua|esgoto|gas|internet|telefone|imovel|credito imobiliario|cabo|tim pos/.test(text)) return "Moradia";
   if (/netflix|spotify|amazon prime|amazonprime|disney|hbo|youtube|icloud|google one|tinder|roblox|hotmart|skyfit|academia|assinatura/.test(text)) return "Assinaturas";
