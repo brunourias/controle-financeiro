@@ -123,7 +123,10 @@ export default function Home() {
   const donut = `conic-gradient(${categoryData.map((item, index) => { const start = categoryData.slice(0, index).reduce((sum, entry) => sum + entry.share, 0); return `${item.color} ${start}% ${start + item.share}%`; }).join(",") || "#e9eef3 0 100%"} )`;
   const pendingHashes = useMemo(() => new Set(pendingDocuments.map((document) => document.hash)), [pendingDocuments]);
   const reviewTransactions = useMemo(() => transactions.filter((item) => item.documentHash && pendingHashes.has(item.documentHash)), [transactions, pendingHashes]);
-  const monthlySeries = useMemo(() => months.map((month) => ({ month, total: Math.abs(transactions.filter((item) => (item.month ?? item.date.slice(0, 7)) === month && item.amount < 0).reduce((sum, item) => sum + item.amount, 0)), categories: CATEGORY_NAMES.map((category) => ({ category, value: Math.abs(transactions.filter((item) => (item.month ?? item.date.slice(0, 7)) === month && item.amount < 0 && item.category === category).reduce((sum, item) => sum + item.amount, 0)) })) })), [months, transactions]);
+  const monthlySeries = useMemo(() => months.map((month) => {
+    const expensesForMonth = transactions.filter((item) => (item.month ?? item.date.slice(0, 7)) === month && item.amount < 0).map((item) => CATEGORY_NAMES.includes(item.category) ? item : { ...item, category: "Outros" as Category });
+    return { month, total: Math.abs(expensesForMonth.reduce((sum, item) => sum + item.amount, 0)), categories: CATEGORY_NAMES.map((category) => ({ category, value: Math.abs(expensesForMonth.filter((item) => item.category === category).reduce((sum, item) => sum + item.amount, 0)) })) };
+  }), [months, transactions]);
   const recentMonths = useMemo(() => {
     const now = new Date();
     return Array.from({ length: 6 }, (_, index) => {
@@ -218,9 +221,9 @@ function UploadView({ files, ready, parsing, error, user, cloudDocuments, onFile
 
 function MonthlyEvolution({ series }: { series: Array<{ month: string; total: number; categories: Array<{ category: Category; value: number }> }> }) {
   const maximum = Math.max(...series.map((item) => item.total), 1);
-  return <article className="evolution-card"><div className="card-title"><div><p className="eyebrow">EVOLUÇÃO POR CATEGORIA</p><h3>Comparação mensal</h3></div><span>{series.length} meses</span></div>{series.length < 2 ? <p className="empty-state">Importe pelo menos dois meses para comparar sua evolução.</p> : <div className="evolution-chart">{series.map((item) => <div className="evolution-column" key={item.month}><strong>{money(item.total)}</strong><div className="evolution-track" style={{ height: `${Math.max(18, item.total / maximum * 170)}px` }}>{item.categories.filter((category) => category.value > 0).map((category) => <i key={category.category} title={`${category.category}: ${money(category.value)}`} style={{ background: CATEGORY_META[category.category].color, height: `${category.value / item.total * 100}%` }} />)}</div><span>{monthLabel(item.month)}</span></div>)}</div>}<div className="evolution-legend">{CATEGORY_NAMES.map((category) => <span key={category}><i style={{ background: CATEGORY_META[category].color }} />{category}</span>)}</div></article>;
+  const activeCategories = CATEGORY_NAMES.filter((category) => series.some((item) => item.categories.some((entry) => entry.category === category && entry.value > 0)));
+  return <article className="evolution-card"><div className="card-title"><div><p className="eyebrow">EVOLUÇÃO POR CATEGORIA</p><h3>Comparação mensal de saídas</h3></div><span>{series.length} meses</span></div>{series.length < 2 ? <p className="empty-state">Importe pelo menos dois meses para comparar sua evolução.</p> : <><p className="evolution-help">Cada barra representa o total gasto no mês. As cores mostram a composição por categoria.</p><div className="evolution-chart">{series.map((item) => <div className="evolution-column" key={item.month}><strong>{money(item.total)}</strong><div className="evolution-track" style={{ height: `${Math.max(24, item.total / maximum * 170)}px` }}>{item.categories.filter((category) => category.value > 0).map((category) => <i key={category.category} title={`${category.category}: ${money(category.value)}`} style={{ background: CATEGORY_META[category.category].color, height: `${category.value / item.total * 100}%` }} />)}</div><span>{monthLabel(item.month)}</span></div>)}</div><div className="evolution-legend">{activeCategories.map((category) => <span key={category}><i style={{ background: CATEGORY_META[category].color }} />{category}</span>)}</div></>}</article>;
 }
-
 
 
 function SavingsCoach({ expenses, transactions, selectedMonth }: { expenses: ParsedTransaction[]; transactions: ParsedTransaction[]; selectedMonth: string }) {
