@@ -43,3 +43,26 @@
 .insight-list .clickable-insight{display:grid;width:100%;grid-template-columns:auto 1fr;gap:15px;text-align:left;color:inherit;cursor:pointer;font:inherit}.insight-list .clickable-insight:hover{border-color:#76c9a7;background:#f7fcf9;transform:translateY(-1px)}.clickable-insight p b{color:var(--green);white-space:nowrap}
 
 .evolution-help{margin:8px 0 0;color:var(--muted);font-size:12px}.evolution-chart{overflow-y:hidden!important;padding-bottom:28px!important}.evolution-legend{padding-top:16px!important;padding-bottom:2px}.evolution-legend span{padding:4px 7px;border-radius:999px;background:#f4f7f9;color:var(--ink)!important;font-weight:700}.evolution-legend i{flex:0 0 auto}
+
+
+/* Sistema visual compacto: mesma hierarquia em todas as áreas do painel. */
+:root{--panel-radius:14px;--panel-pad:18px;--panel-shadow:0 4px 16px #1836530a}
+.content{max-width:1320px;padding:28px clamp(22px,4vw,52px)}
+.content header{margin-bottom:22px}.content header h2{font-size:30px;letter-spacing:-.7px}
+.sidebar{width:236px}.sidebar nav{gap:3px}.sidebar nav button{min-height:40px;padding:10px 13px;border-radius:10px;font-size:14px}
+.summary-grid{gap:14px}.summary-grid article{min-height:142px;padding:var(--panel-pad)!important;border-radius:var(--panel-radius)!important;box-shadow:var(--panel-shadow)}
+.summary-grid strong{font-size:24px}.hero-card strong{font-size:31px!important}.summary-grid p{margin-bottom:8px}
+.dashboard-grid{grid-template-columns:minmax(0,1.45fr) minmax(280px,.75fr);gap:14px;margin-top:14px}
+.category-card,.saving-card,.transactions-card,.evolution-card,.smart-insights,.budget-rules>article,.installment-panel,.pix-summary article,.pix-columns>article,.goal-planner,.goal-summary article,.saving-hero,.coach-grid article{border-radius:var(--panel-radius)!important;box-shadow:var(--panel-shadow)!important}
+.category-card,.saving-card,.transactions-card,.evolution-card,.smart-insights,.budget-rules>article,.installment-panel,.pix-summary article,.pix-columns>article{padding:var(--panel-pad)!important}
+.category-body{gap:28px;padding:10px 0 2px}.donut{width:128px;height:128px}.donut:after{width:78px;height:78px}.legend{min-width:235px}
+.saving-card{padding:20px!important}.saving-card h3{font-size:21px}.saving-card p{font-size:12px;line-height:1.5}
+.transactions-card.full{margin-top:14px}.transaction{padding:12px 0!important;gap:11px}.transaction .merchant{width:32px;height:32px;font-size:11px}.transaction b{font-size:12px}.transaction small{font-size:10px}.transaction>strong{font-size:12px}
+.missing-months{margin:-4px 0 16px;padding:12px 14px}.missing-months button{padding:8px 10px}
+.evolution-card{margin-bottom:14px}.evolution-chart{min-height:205px!important;padding-top:20px!important}.evolution-column{min-width:66px}.evolution-track{width:40px}.evolution-legend{gap:7px 9px!important}.evolution-legend span{font-size:9px!important}
+.insight-settings{gap:10px;padding:14px 0}.insight-list{gap:10px}.insight-list article,.insight-list .clickable-insight{padding:15px!important;border-radius:12px!important}.insight-list h3{font-size:16px}.insight-list p{font-size:12px;line-height:1.45}
+.budget-rules{gap:14px;margin-bottom:14px}.budget-grid{gap:7px;margin-top:12px}.budget-grid label{padding:8px}.installment-panel>div{padding:8px 0}
+.pix-summary,.pix-columns{gap:14px;margin-bottom:14px}.pix-summary strong{font-size:24px}.pix-row{padding:11px 0}
+.goal-page,.savings-coach{max-width:1100px}.goal-planner{gap:16px!important;padding:20px!important}.coach-grid{gap:12px}.coach-grid article{padding:16px!important}
+@media(max-width:980px){.sidebar{width:210px}.content{padding:24px}.summary-grid{grid-template-columns:1fr 1fr}.summary-grid .hero-card{grid-column:span 2}.dashboard-grid{grid-template-columns:1fr}.saving-card{min-height:auto}}
+@media(max-width:700px){.content{padding:20px 16px}.content header{align-items:flex-start;gap:12px}.content header h2{font-size:25px}.summary-grid{grid-template-columns:1fr}.summary-grid .hero-card{grid-column:auto}.summary-grid article{min-height:120px}.dashboard-grid{margin-top:12px}.category-body{align-items:flex-start;flex-direction:column;gap:16px}.legend{width:100%;min-width:0}.donut{margin:auto}.sidebar nav button{min-height:38px}.transaction{align-items:flex-start}.transaction>strong{padding-top:3px}.goal-planner{padding:16px!important}}
