@@ -31,3 +31,5 @@
 .upload-card{position:relative}.clear-files{position:absolute;right:18px;bottom:9px;border:0;background:none;color:#a05345;font-size:10px;font-weight:800;cursor:pointer}.upload-card .upload-main{padding-bottom:30px}
 
 .transaction-tools{display:flex;align-items:center;gap:7px;flex-wrap:wrap}.transaction-tools button{border:1px solid var(--line);background:#fff;color:var(--muted);border-radius:7px;padding:7px 9px;font-size:10px;font-weight:800;cursor:pointer}.transaction-tools button.selected{border-color:var(--green);background:#edf9f3;color:#0b6d4b}@media(max-width:550px){.transaction-tools{margin-top:10px}.transactions-card .card-title{display:block}}
+
+.legend .category-filter{border:0;background:none;width:100%;padding:6px 0;text-align:left;display:grid;grid-template-columns:10px 1fr auto;gap:9px;cursor:pointer;color:var(--ink);font:inherit;font-size:12px;border-radius:6px}.legend .category-filter:hover{background:#f2f7f5}.clear-category{border:0;background:none;color:var(--green);font-size:11px;font-weight:800;padding:5px 0;cursor:pointer}
