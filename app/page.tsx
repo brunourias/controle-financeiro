@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { categorize, parseSantanderPdf, type Category, type DocumentKind, type ParsedTransaction } from "../src/lib/pdfParser";
-import { documentExists, firebaseConfigured, hashFile, loadFinancialHistory, loginWithGoogle, logoutFirebase, normalizeSavedIncomeSigns, normalizeSavedInvoiceMonths, observeUser, reclassifyFinancialHistory, saveFinancialImport, updateMatchingFinancialTransactions, type CloudDocument } from "../src/lib/firebaseClient";
+import { documentExists, firebaseConfigured, hashFile, loadFinancialHistory, loginWithGoogle, logoutFirebase, normalizeSavedIncomeSigns, normalizeSavedInvoiceMonths, normalizeSavedStatementAmounts, observeUser, reclassifyFinancialHistory, saveFinancialImport, updateMatchingFinancialTransactions, type CloudDocument } from "../src/lib/firebaseClient";
 
 type FileKind = DocumentKind;
 type View = "upload" | "review" | "dashboard";
@@ -76,7 +76,7 @@ export default function Home() {
       try {
         const history = await loadFinancialHistory(account.uid);
         const normalizedHistory = await normalizeSavedInvoiceMonths(account.uid, history.documents, history.transactions);
-        history.documents = normalizedHistory.documents; history.transactions = await normalizeSavedIncomeSigns(account.uid, normalizedHistory.transactions);
+        history.documents = normalizedHistory.documents; history.transactions = await normalizeSavedStatementAmounts(account.uid, await normalizeSavedIncomeSigns(account.uid, normalizedHistory.transactions));
         // Show the saved history first. A background category update must never
         // prevent the user from seeing transactions that were already saved.
         setTransactions(history.transactions);
