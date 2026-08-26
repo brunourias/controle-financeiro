@@ -109,13 +109,17 @@ export default function Home() {
   const months = useMemo(() => Array.from(new Set(transactions.map((item) => item.month ?? item.date.slice(0, 7)))).sort(), [transactions]);
   const sourceByDocument = useMemo(() => new Map(cloudDocuments.map((document) => [document.hash, document.kind])), [cloudDocuments]);
   const visibleTransactions = useMemo(() => transactions.filter((item) => (!selectedMonth || (item.month ?? item.date.slice(0, 7)) === selectedMonth) && (!selectedCategory || item.category === selectedCategory) && (!selectedMerchant || merchantKey(item.description) === selectedMerchant) && (!selectedSource || (sourceByDocument.get(item.documentHash ?? "") ?? item.source) === selectedSource)), [transactions, selectedMonth, selectedCategory, selectedMerchant, selectedSource, sourceByDocument]);
-  const expenses = useMemo(() => visibleTransactions.filter((item) => item.amount < 0), [visibleTransactions]);
+  const expenses = useMemo(() => visibleTransactions.filter((item) => item.amount < 0).map((item) => CATEGORY_NAMES.includes(item.category) ? item : { ...item, category: "Outros" as Category }), [visibleTransactions]);
   const invoiceTotal = Math.abs(expenses.filter((item) => item.source === "invoice").reduce((sum, item) => sum + item.amount, 0));
   const statementTotal = Math.abs(expenses.filter((item) => item.source === "statement").reduce((sum, item) => sum + item.amount, 0));
   const total = invoiceTotal + statementTotal;
   const detectedIncome = visibleTransactions.filter((item) => item.amount > 0).reduce((sum, item) => sum + item.amount, 0);
-  const categoryData = useMemo(() => CATEGORY_NAMES.map((name) => { const value = Math.abs(expenses.filter((item) => item.category === name).reduce((sum, item) => sum + item.amount, 0)); return { name, value, percentage: total ? Math.round(value / total * 100) : 0, color: CATEGORY_META[name].color }; }).filter((item) => item.value > 0).sort((a, b) => b.value - a.value), [expenses, total]);
-  const donut = `conic-gradient(${categoryData.map((item, index) => { const start = categoryData.slice(0, index).reduce((sum, entry) => sum + entry.percentage, 0); return `${item.color} ${start}% ${start + item.percentage}%`; }).join(",") || "#e9eef3 0 100%"})`;
+  const categoryData = useMemo(() => {
+    const values = CATEGORY_NAMES.map((name) => ({ name, value: Math.abs(expenses.filter((item) => item.category === name).reduce((sum, item) => sum + item.amount, 0)), color: CATEGORY_META[name].color })).filter((item) => item.value > 0);
+    const categoryTotal = values.reduce((sum, item) => sum + item.value, 0);
+    return values.map((item) => ({ ...item, share: categoryTotal ? item.value / categoryTotal * 100 : 0, percentage: categoryTotal ? Math.round(item.value / categoryTotal * 100) : 0 })).sort((a, b) => b.value - a.value);
+  }, [expenses]);
+  const donut = `conic-gradient(${categoryData.map((item, index) => { const start = categoryData.slice(0, index).reduce((sum, entry) => sum + entry.share, 0); return `${item.color} ${start}% ${start + item.share}%`; }).join(",") || "#e9eef3 0 100%"} )`;
   const pendingHashes = useMemo(() => new Set(pendingDocuments.map((document) => document.hash)), [pendingDocuments]);
   const reviewTransactions = useMemo(() => transactions.filter((item) => item.documentHash && pendingHashes.has(item.documentHash)), [transactions, pendingHashes]);
   const monthlySeries = useMemo(() => months.map((month) => ({ month, total: Math.abs(transactions.filter((item) => (item.month ?? item.date.slice(0, 7)) === month && item.amount < 0).reduce((sum, item) => sum + item.amount, 0)), categories: CATEGORY_NAMES.map((category) => ({ category, value: Math.abs(transactions.filter((item) => (item.month ?? item.date.slice(0, 7)) === month && item.amount < 0 && item.category === category).reduce((sum, item) => sum + item.amount, 0)) })) })), [months, transactions]);
