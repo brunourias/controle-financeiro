@@ -63,7 +63,9 @@ export async function loadFinancialHistory(uid: string) {
 
 export async function normalizeSavedStatementAmounts(uid: string, transactions: ParsedTransaction[]) {
   if (!db) return transactions;
-  const trailingAmount = /\s*-\s*(\d{1,3}(?:\.\d{3})*,\d{2})-\s*$/;
+  // Santander may concatenate the debit value to the description either as
+  // " - 25,00-" or simply " 12,50-"; both precede the running balance.
+  const trailingAmount = /\s+(?:-\s*)?(\d{1,3}(?:\.\d{3})*,\d{2})-\s*$/;
   const corrected = transactions.map((item) => {
     if (item.source !== "statement" || item.amount >= 0) return item;
     const match = item.description.match(trailingAmount);
