@@ -76,7 +76,7 @@ export function categorize(description: string): Category {
   if (/liquido de vencimento|salario|folha de pagamento/.test(text)) return "Renda";
   if (/pagamento de boleto/.test(text)) return "Boleto";
   if (/pix recebido/.test(text)) return "PIX recebido";
-  if (/^pix\b|pix enviado/.test(text)) return "PIX enviado";
+  if (/pix enviado/.test(text)) return "PIX enviado";
   if (/transferencia recebida|ted recebido|transfer recebido/.test(text)) return "Transferência recebida";
   if (/transferencia enviada|ted enviado|transfer enviado|pagamento de fatura|saque dinheiro|tributos municipais/.test(text)) return "Transferência enviada";
   if (/sem parar|conectcar|velo e|tag de pedagio|pedagio/.test(text)) return "Sem Parar";
@@ -90,6 +90,11 @@ export function categorize(description: string): Category {
   if (/farmacia|drog|hospital|clinica|laborat|medic|odonto|saude|rdsaude/.test(text)) return "Saúde";
   if (/mercado livre|mercadolivre|shopee|havan|casas bahia|leroy merlin|autozone|benetton|amazon|wallifer|bahia techmix/.test(text)) return "Compras";
   return "Outros";
+}
+
+export function categorizeTransaction(description: string, amount: number): Category {
+  if (/\bpix\b/i.test(description)) return amount > 0 ? "PIX recebido" : "PIX enviado";
+  return categorize(description);
 }
 
 function signedAmount(kind: DocumentKind, description: string, rawAmount: string, parsed: number) {
@@ -126,7 +131,7 @@ function transactionFromLine(line: string, kind: DocumentKind, index: number): P
     date: dated.date,
     description,
     amount: signedAmount(kind, description, rawAmount, parsed),
-    category: categorize(description),
+    category: categorizeTransaction(description, signedAmount(kind, description, rawAmount, parsed)),
     source: kind,
     confidence: amountMatch[2] || /^\d{1,2}[\/.-]\d{1,2}/.test(line) ? "alta" : "média",
     raw: line,
