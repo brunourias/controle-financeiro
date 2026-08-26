@@ -1,7 +1,7 @@
 import { getApps, initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut, type User } from "firebase/auth";
 import { collection, doc, getDoc, getDocs, getFirestore, serverTimestamp, updateDoc, writeBatch } from "firebase/firestore";
-import { categorize, type DocumentKind, type ParsedTransaction } from "./pdfParser";
+import { categorizeTransaction, type DocumentKind, type ParsedTransaction } from "./pdfParser";
 
 const config = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -118,7 +118,7 @@ export async function reclassifyFinancialHistory(uid: string, transactions: Pars
     const legacyTransport = item.category === ("Transporte" as unknown as ParsedTransaction["category"]);
     const legacyPhonePlan = /tim pos|tim controle|tim pre/i.test(item.description) && item.category !== "Plano celular";
     const legacyPix = /^pix\b/i.test(item.description) && !/pix recebido/i.test(item.description) && item.category !== "PIX enviado";
-    return (item as ParsedTransaction & { manuallyReviewed?: boolean }).manuallyReviewed && !legacyTransport && !legacyPhonePlan && !legacyPix ? item : ({ ...item, category: categorize(item.description) });
+    return (item as ParsedTransaction & { manuallyReviewed?: boolean }).manuallyReviewed && !legacyTransport && !legacyPhonePlan && !legacyPix ? item : ({ ...item, category: categorizeTransaction(item.description, item.amount) });
   });
   const changed = correctedTransactions.filter((item, index) => item.category !== transactions[index].category);
   for (let offset = 0; offset < changed.length; offset += 400) {
