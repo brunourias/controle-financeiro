@@ -106,7 +106,8 @@ export default function Home() {
   useEffect(() => { localStorage.setItem("fluxo-classification-rules", JSON.stringify(classificationRules)); }, [classificationRules]);
 
   const months = useMemo(() => Array.from(new Set(transactions.map((item) => item.month ?? item.date.slice(0, 7)))).sort(), [transactions]);
-  const visibleTransactions = useMemo(() => transactions.filter((item) => (!selectedMonth || (item.month ?? item.date.slice(0, 7)) === selectedMonth) && (!selectedCategory || item.category === selectedCategory) && (!selectedSource || item.source === selectedSource)), [transactions, selectedMonth, selectedCategory]);
+  const sourceByDocument = useMemo(() => new Map(cloudDocuments.map((document) => [document.hash, document.kind])), [cloudDocuments]);
+  const visibleTransactions = useMemo(() => transactions.filter((item) => (!selectedMonth || (item.month ?? item.date.slice(0, 7)) === selectedMonth) && (!selectedCategory || item.category === selectedCategory) && (!selectedSource || (sourceByDocument.get(item.documentHash ?? "") ?? item.source) === selectedSource)), [transactions, selectedMonth, selectedCategory, selectedSource, sourceByDocument]);
   const expenses = useMemo(() => visibleTransactions.filter((item) => item.amount < 0), [visibleTransactions]);
   const invoiceTotal = Math.abs(expenses.filter((item) => item.source === "invoice").reduce((sum, item) => sum + item.amount, 0));
   const statementTotal = Math.abs(expenses.filter((item) => item.source === "statement").reduce((sum, item) => sum + item.amount, 0));
