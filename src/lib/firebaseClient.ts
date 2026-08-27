@@ -159,7 +159,7 @@ export async function updateMatchingFinancialTransactions(uid: string, ids: stri
 }
 
 function classificationKey(description: string) {
-  return description.toLowerCase().normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").replace(/\\d+/g, "").replace(/[^a-z]+/g, " ").trim();
+  return description.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\d+/g, "").replace(/[^a-z]+/g, " ").trim();
 }
 
 export async function saveFinancialImport(uid: string, documents: CloudDocument[], transactions: ParsedTransaction[]) {
