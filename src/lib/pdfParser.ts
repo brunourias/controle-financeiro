@@ -203,8 +203,9 @@ export async function parseSantanderPdf(file: File, kind: DocumentKind): Promise
   if (kind === "invoice" && dueDate) {
     const year = Number(dueDate[3].length === 2 ? `20${dueDate[3]}` : dueDate[3]);
     const dueMonth = Number(dueDate[2]);
-    const closing = new Date(year, dueMonth - 2, 1);
-    month = `${closing.getFullYear()}-${String(closing.getMonth() + 1).padStart(2, "0")}`;
+    // The dashboard uses the billing/payment month shown by Santander, not
+    // the purchase-cycle closing month. A bill due on 01/07 belongs to July.
+    month = `${year}-${String(dueMonth).padStart(2, "0")}`;
   } else if (filenameDate) {
     month = filenameDate[1].length === 4 ? `${filenameDate[1]}-${filenameDate[2]}` : `${filenameDate[2]}-${filenameDate[1]}`;
   }
