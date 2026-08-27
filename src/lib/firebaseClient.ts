@@ -28,6 +28,7 @@ export type CloudDocument = {
   declaredTotal?: number;
   invoiceMonthNormalized?: boolean;
   invoiceMonthByDueDate?: boolean;
+  invoiceTransactionsByPurchaseDate?: boolean;
 };
 
 export function observeUser(callback: (user: User | null) => void) {
@@ -123,6 +124,24 @@ export async function normalizeSavedInvoiceMonths(uid: string, documents: CloudD
     documents: documents.map((item) => monthByHash.has(item.hash) ? { ...item, month: monthByHash.get(item.hash)!, invoiceMonthNormalized: true, invoiceMonthByDueDate: true } : item),
     transactions: corrected,
   };
+}
+
+export async function normalizeSavedInvoiceTransactionMonths(uid: string, documents: CloudDocument[], transactions: ParsedTransaction[]) {
+  if (!db) return { documents, transactions };
+  const invoices = documents.filter((item) => item.kind === "invoice" && !item.invoiceTransactionsByPurchaseDate);
+  if (!invoices.length) return { documents, transactions };
+  const invoiceHashes = new Set(invoices.map((item) => item.hash));
+  const corrected = transactions.map((item) => invoiceHashes.has(item.documentHash ?? "") ? { ...item, month: item.date.slice(0, 7) } : item);
+  const updates: Array<{ id: string; collection: "documents" | "transactions"; patch: Record<string, unknown> }> = [
+    ...invoices.map((item) => ({ id: item.hash, collection: "documents" as const, patch: { invoiceTransactionsByPurchaseDate: true } })),
+    ...corrected.filter((item) => invoiceHashes.has(item.documentHash ?? "")).map((item) => ({ id: item.id, collection: "transactions" as const, patch: { month: item.month } })),
+  ];
+  for (let offset = 0; offset < updates.length; offset += 400) {
+    const batch = writeBatch(db);
+    for (const update of updates.slice(offset, offset + 400)) batch.update(doc(db, "users", uid, update.collection, update.id), update.patch);
+    await batch.commit();
+  }
+  return { documents: documents.map((item) => invoiceHashes.has(item.hash) ? { ...item, invoiceTransactionsByPurchaseDate: true } : item), transactions: corrected };
 }
 export async function reclassifyFinancialHistory(uid: string, transactions: ParsedTransaction[]) {
   if (!db) return { transactions, corrected: 0 };
