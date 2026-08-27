@@ -234,6 +234,6 @@ export async function parseSantanderPdf(file: File, kind: DocumentKind): Promise
   const parsedInvoiceTotal = Math.abs(unique.reduce((sum, item) => sum + item.amount, 0));
   if (kind === "invoice" && !declaredTotal) warnings.push("Não foi possível conferir o valor total declarado na capa da fatura.");
   if (kind === "invoice" && declaredTotal && Math.abs(parsedInvoiceTotal - declaredTotal) > 0.05) warnings.push(`A soma das compras lidas (${parsedInvoiceTotal.toFixed(2)}) não confere com o total da fatura. Revise antes de salvar.`);
-  return { transactions: unique.map((item) => ({ ...item, month })), pageCount: document.numPages, lineCount: allLines.length, warnings, month, declaredTotal };
+  return { transactions: unique.map((item) => ({ ...item, month: kind === "invoice" ? item.date.slice(0, 7) : month })), pageCount: document.numPages, lineCount: allLines.length, warnings, month, declaredTotal };
 }
 
