@@ -28,6 +28,9 @@ export type ParseResult = {
   lineCount: number;
   warnings: string[];
   month: string;
+  // The invoice cover is Santander's authoritative amount due. It is kept
+  // separate from purchase rows, which are used only for categorisation.
+  declaredTotal?: number;
 };
 
 type PositionedText = { str: string; x: number; y: number };
@@ -205,6 +208,10 @@ export async function parseSantanderPdf(file: File, kind: DocumentKind): Promise
   } else if (filenameDate) {
     month = filenameDate[1].length === 4 ? `${filenameDate[1]}-${filenameDate[2]}` : `${filenameDate[2]}-${filenameDate[1]}`;
   }
-  return { transactions: unique.map((item) => ({ ...item, month })), pageCount: document.numPages, lineCount: allLines.length, warnings, month };
+  const declaredTotal = kind === "invoice"
+    ? parseMoney((invoiceHeaderLines.join(" ").match(/pagamento total\\s*R\\$\\s*([\\d.]+,\\d{2})/i) ?? [])[1] ?? "") ?? undefined
+    : undefined;
+  if (kind === "invoice" && !declaredTotal) warnings.push("Não foi possível conferir o valor total declarado na capa da fatura.");
+  return { transactions: unique.map((item) => ({ ...item, month })), pageCount: document.numPages, lineCount: allLines.length, warnings, month, declaredTotal };
 }
 
