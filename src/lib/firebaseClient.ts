@@ -27,6 +27,7 @@ export type CloudDocument = {
   // Authoritative total shown on the cover of an imported card statement.
   declaredTotal?: number;
   invoiceMonthNormalized?: boolean;
+  invoiceMonthByDueDate?: boolean;
 };
 
 export function observeUser(callback: (user: User | null) => void) {
@@ -99,21 +100,30 @@ export async function normalizeSavedIncomeSigns(uid: string, transactions: Parse
 
 export async function normalizeSavedInvoiceMonths(uid: string, documents: CloudDocument[], transactions: ParsedTransaction[]) {
   if (!db) return { documents, transactions };
-  const legacyInvoices = documents.filter((item) => item.kind === "invoice" && !item.invoiceMonthNormalized);
+  // Older imports placed a bill in the previous month (the closing cycle).
+  // Use the invoice due month, which is the month displayed to the user.
+  const legacyInvoices = documents.filter((item) => item.kind === "invoice" && !item.invoiceMonthByDueDate);
   if (!legacyInvoices.length) return { documents, transactions };
   const monthByHash = new Map(legacyInvoices.map((item) => {
-    const date = new Date(`${item.month}-01T12:00:00`);
-    date.setMonth(date.getMonth() - 1);
-    return [item.hash, `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`];
+    const date = new Date(item.month + "-01T12:00:00");
+    date.setMonth(date.getMonth() + 1);
+    return [item.hash, date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0")];
   }));
-  const batch = writeBatch(db);
-  for (const item of legacyInvoices) batch.update(doc(db, "users", uid, "documents", item.hash), { month: monthByHash.get(item.hash), invoiceMonthNormalized: true });
   const corrected = transactions.map((item) => monthByHash.has(item.documentHash ?? "") ? { ...item, month: monthByHash.get(item.documentHash ?? "")! } : item);
-  for (const item of corrected.filter((item) => monthByHash.has(item.documentHash ?? ""))) batch.update(doc(db, "users", uid, "transactions", item.id), { month: item.month });
-  await batch.commit();
-  return { documents: documents.map((item) => monthByHash.has(item.hash) ? { ...item, month: monthByHash.get(item.hash)!, invoiceMonthNormalized: true } : item), transactions: corrected };
+  const updates: Array<{ id: string; collection: "documents" | "transactions"; patch: Record<string, unknown> }> = [
+    ...legacyInvoices.map((item) => ({ id: item.hash, collection: "documents" as const, patch: { month: monthByHash.get(item.hash), invoiceMonthNormalized: true, invoiceMonthByDueDate: true } })),
+    ...corrected.filter((item) => monthByHash.has(item.documentHash ?? "")).map((item) => ({ id: item.id, collection: "transactions" as const, patch: { month: item.month } })),
+  ];
+  for (let offset = 0; offset < updates.length; offset += 400) {
+    const batch = writeBatch(db);
+    for (const update of updates.slice(offset, offset + 400)) batch.update(doc(db, "users", uid, update.collection, update.id), update.patch);
+    await batch.commit();
+  }
+  return {
+    documents: documents.map((item) => monthByHash.has(item.hash) ? { ...item, month: monthByHash.get(item.hash)!, invoiceMonthNormalized: true, invoiceMonthByDueDate: true } : item),
+    transactions: corrected,
+  };
 }
-
 export async function reclassifyFinancialHistory(uid: string, transactions: ParsedTransaction[]) {
   if (!db) return { transactions, corrected: 0 };
   const correctedTransactions = transactions.map((item) => {
