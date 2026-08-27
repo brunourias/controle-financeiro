@@ -73,6 +73,14 @@ function extractDate(line: string): { date: string; rest: string } | null {
   return null;
 }
 
+// On Santander invoice detail pages the installment number can appear before
+// the purchase date (for example, "3 01/05 STORE 25,00").
+function extractInvoiceInlineDate(line: string): { date: string; rest: string } | null {
+  const match = line.match(/\\b(?:\\d+\\s+)?(\\d{1,2})\\/(\\d{1,2})(?!\\/\\d{2,4})\\s+(.+)$/);
+  if (!match) return null;
+  return { date: isoDate(Number(match[1]), Number(match[2])), rest: match[3] };
+}
+
 export function categorize(description: string): Category {
   const text = description.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").replace(/\s+/g, " ").trim();
   // Regras observadas nos extratos e faturas Santander.
@@ -108,7 +116,7 @@ function signedAmount(kind: DocumentKind, description: string, rawAmount: string
 }
 
 function transactionFromLine(line: string, kind: DocumentKind, index: number): ParsedTransaction | null {
-  const dated = extractDate(line);
+  const dated = extractDate(line) ?? (kind === "invoice" ? extractInvoiceInlineDate(line) : null);
   if (!dated) return null;
   // Santander renders invoice columns on the same extracted text row. Totals such
   // as "Total de pagamentos" can be appended after a genuine purchase amount.
