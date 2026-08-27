@@ -158,12 +158,23 @@ export async function updateMatchingFinancialTransactions(uid: string, ids: stri
   }
 }
 
+function classificationKey(description: string) {
+  return description.toLowerCase().normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").replace(/\\d+/g, "").replace(/[^a-z]+/g, " ").trim();
+}
+
 export async function saveFinancialImport(uid: string, documents: CloudDocument[], transactions: ParsedTransaction[]) {
   if (!db) throw new Error("Firebase ainda não foi configurado.");
   // Reprocessing a PDF must replace its previous transactions, otherwise
   // corrections to the parser would leave old incorrect entries in the history.
   const replacing = new Set(documents.map((item) => item.hash));
   const existing = await getDocs(collection(db, "users", uid, "transactions"));
+  // Keep any manual category choice before replacing a document. A parser
+  // improvement must never erase what the user has already taught the system.
+  const savedManualCategories = new Map<string, ParsedTransaction["category"]>();
+  for (const entry of existing.docs) {
+    const data = entry.data() as ParsedTransaction & { manuallyReviewed?: boolean };
+    if (data.manuallyReviewed && data.description && data.category) savedManualCategories.set(classificationKey(data.description), data.category);
+  }
   const oldEntries = existing.docs.filter((entry) => replacing.has(String(entry.data().documentHash ?? "")));
   for (let offset = 0; offset < oldEntries.length; offset += 400) {
     const batch = writeBatch(db);
@@ -172,7 +183,10 @@ export async function saveFinancialImport(uid: string, documents: CloudDocument[
   }
   const operations: Array<{ path: string[]; data: Record<string, unknown> }> = [];
   for (const documentRecord of documents) operations.push({ path: ["users", uid, "documents", documentRecord.hash], data: { ...documentRecord, importedAt: serverTimestamp() } });
-  for (const item of transactions) operations.push({ path: ["users", uid, "transactions", `${item.documentHash}-${item.id}`], data: { ...item, importedAt: serverTimestamp() } });
+  for (const item of transactions) {
+    const preservedCategory = savedManualCategories.get(classificationKey(item.description));
+    operations.push({ path: ["users", uid, "transactions", `${item.documentHash}-${item.id}`], data: { ...item, ...(preservedCategory ? { category: preservedCategory, confidence: "alta", manuallyReviewed: true, restoredManualCategoryAt: serverTimestamp() } : {}), importedAt: serverTimestamp() } });
+  }
   for (let offset = 0; offset < operations.length; offset += 400) {
     const batch = writeBatch(db);
     for (const operation of operations.slice(offset, offset + 400)) batch.set(doc(db, operation.path.join("/")), operation.data, { merge: true });
