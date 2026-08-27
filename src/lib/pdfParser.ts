@@ -209,9 +209,12 @@ export async function parseSantanderPdf(file: File, kind: DocumentKind): Promise
   } else if (filenameDate) {
     month = filenameDate[1].length === 4 ? `${filenameDate[1]}-${filenameDate[2]}` : `${filenameDate[2]}-${filenameDate[1]}`;
   }
-  const declaredTotal = kind === "invoice"
-    ? parseMoney((invoiceHeaderLines.join(" ").match(/pagamento total\\s*R\\$\\s*([\\d.]+,\\d{2})/i) ?? [])[1] ?? "") ?? undefined
-    : undefined;
+  const invoiceHeader = invoiceHeaderLines.join(" ");
+  // PDF.js can insert column labels between “Pagamento Total” and the amount.
+  // Accept that layout while keeping the first amount after this label.
+  const declaredMatch = invoiceHeader.match(/pagamento\\s+total[\\s\\S]{0,180}?R\\$\\s*([\\d.]+,\\d{2})/i)
+    ?? invoiceHeader.match(/total\\s+a\\s+pagar[\\s\\S]{0,180}?R\\$\\s*([\\d.]+,\\d{2})/i);
+  const declaredTotal = kind === "invoice" ? parseMoney(declaredMatch?.[1] ?? "") ?? undefined : undefined;
   if (kind === "invoice" && !declaredTotal) warnings.push("Não foi possível conferir o valor total declarado na capa da fatura.");
   return { transactions: unique.map((item) => ({ ...item, month })), pageCount: document.numPages, lineCount: allLines.length, warnings, month, declaredTotal };
 }
