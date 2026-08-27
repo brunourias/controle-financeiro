@@ -76,7 +76,7 @@ function extractDate(line: string): { date: string; rest: string } | null {
 // On Santander invoice detail pages the installment number can appear before
 // the purchase date (for example, "3 01/05 STORE 25,00").
 function extractInvoiceInlineDate(line: string): { date: string; rest: string } | null {
-  const match = line.match(/\\b(?:\\d+\\s+)?(\\d{1,2})\\/(\\d{1,2})(?!\\/\\d{2,4})\\s+(.+)$/);
+  const match = line.match(/\b(?:\d+\s+)?(\d{1,2})\/(\d{1,2})(?!\/\d{2,4})\s+(.+)$/);
   if (!match) return null;
   return { date: isoDate(Number(match[1]), Number(match[2])), rest: match[3] };
 }
