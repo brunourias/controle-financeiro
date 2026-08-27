@@ -231,7 +231,9 @@ export async function parseSantanderPdf(file: File, kind: DocumentKind): Promise
     // In Santander\'s invoice cover, the first currency amount is the amount due.
     ?? invoiceHeader.match(/R\$\s*([\d.]+,\d{2})/i);
   const declaredTotal = kind === "invoice" ? parseMoney(declaredMatch?.[1] ?? "") ?? undefined : undefined;
+  const parsedInvoiceTotal = Math.abs(unique.reduce((sum, item) => sum + item.amount, 0));
   if (kind === "invoice" && !declaredTotal) warnings.push("Não foi possível conferir o valor total declarado na capa da fatura.");
+  if (kind === "invoice" && declaredTotal && Math.abs(parsedInvoiceTotal - declaredTotal) > 0.05) warnings.push(`A soma das compras lidas (${parsedInvoiceTotal.toFixed(2)}) não confere com o total da fatura. Revise antes de salvar.`);
   return { transactions: unique.map((item) => ({ ...item, month })), pageCount: document.numPages, lineCount: allLines.length, warnings, month, declaredTotal };
 }
 
