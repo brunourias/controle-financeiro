@@ -24,6 +24,8 @@ export type CloudDocument = {
   month: string;
   pageCount: number;
   transactionCount: number;
+  // Authoritative total shown on the cover of an imported card statement.
+  declaredTotal?: number;
   invoiceMonthNormalized?: boolean;
 };
 
