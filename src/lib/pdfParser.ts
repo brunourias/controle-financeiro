@@ -149,7 +149,7 @@ function transactionFromLine(line: string, kind: DocumentKind, index: number): P
   };
 }
 
-function itemsToLines(items: PositionedText[]) {
+function itemsToLines(items: PositionedText[], splitInvoiceColumns = false) {
   const rows: Array<{ y: number; items: PositionedText[] }> = [];
   for (const item of items.filter((item) => normalize(item.str))) {
     let row = rows.find((candidate) => Math.abs(candidate.y - item.y) <= 2.5);
@@ -158,8 +158,14 @@ function itemsToLines(items: PositionedText[]) {
   }
   return rows
     .sort((a, b) => b.y - a.y)
-    .map((row) => normalize(row.items.sort((a, b) => a.x - b.x).map((item) => item.str).join(" ")))
-    .filter(Boolean);
+    .flatMap((row) => {
+      // Santander prints invoice purchases in two independent columns. Joining
+      // them turns two purchases into one broken row and drops amounts.
+      const columns = splitInvoiceColumns
+        ? [row.items.filter((item) => item.x < 297), row.items.filter((item) => item.x >= 297)]
+        : [row.items];
+      return columns.map((column) => normalize(column.sort((a, b) => a.x - b.x).map((item) => item.str).join(" "))).filter(Boolean);
+    });
 }
 
 export async function parseSantanderPdf(file: File, kind: DocumentKind): Promise<ParseResult> {
@@ -185,7 +191,7 @@ export async function parseSantanderPdf(file: File, kind: DocumentKind): Promise
     });
     // The first page of Santander invoices is a billing summary and boleto.
     // Purchases start on the following pages; parsing it creates false expenses.
-    const pageLines = itemsToLines(items);
+    const pageLines = itemsToLines(items, kind === "invoice" && pageNumber > 1);
     if (kind === "invoice" && pageNumber === 1) { invoiceHeaderLines.push(...pageLines); continue; }
     allLines.push(...pageLines);
   }
