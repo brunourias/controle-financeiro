@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { categorizeTransaction, parseSantanderPdf, type Category, type DocumentKind, type ParsedTransaction } from "../src/lib/pdfParser";
-import { documentExists, firebaseConfigured, hashFile, loadFinancialHistory, loginWithGoogle, logoutFirebase, normalizeSavedIncomeSigns, normalizeSavedInvoiceMonths, normalizeSavedStatementAmounts, observeUser, reclassifyFinancialHistory, saveFinancialImport, updateMatchingFinancialTransactions, type CloudDocument } from "../src/lib/firebaseClient";
+import { documentExists, firebaseConfigured, hashFile, loadFinancialHistory, loginWithGoogle, logoutFirebase, normalizeSavedIncomeSigns, normalizeSavedInvoiceMonths, normalizeSavedInvoiceTransactionMonths, normalizeSavedStatementAmounts, observeUser, reclassifyFinancialHistory, saveFinancialImport, updateMatchingFinancialTransactions, type CloudDocument } from "../src/lib/firebaseClient";
 
 type FileKind = DocumentKind;
 type View = "upload" | "review" | "dashboard";
@@ -78,7 +78,8 @@ export default function Home() {
       try {
         const history = await loadFinancialHistory(account.uid);
         const normalizedHistory = await normalizeSavedInvoiceMonths(account.uid, history.documents, history.transactions);
-        history.documents = normalizedHistory.documents; history.transactions = await normalizeSavedStatementAmounts(account.uid, await normalizeSavedIncomeSigns(account.uid, normalizedHistory.transactions));
+        const purchaseDateHistory = await normalizeSavedInvoiceTransactionMonths(account.uid, normalizedHistory.documents, normalizedHistory.transactions);
+        history.documents = purchaseDateHistory.documents; history.transactions = await normalizeSavedStatementAmounts(account.uid, await normalizeSavedIncomeSigns(account.uid, purchaseDateHistory.transactions));
         // Show the saved history first. A background category update must never
         // prevent the user from seeing transactions that were already saved.
         setTransactions(history.transactions);
@@ -181,7 +182,7 @@ export default function Home() {
         const result = await parseSantanderPdf(entry.file, entry.kind);
         if (alreadySaved) batchWarnings.push(`${entry.file.name}: documento já existente; seus dados serão atualizados com a nova leitura.`);
         pages += result.pageCount; lines += result.lineCount; batchWarnings.push(...result.warnings);
-        batchDocuments.push({ hash, name: entry.file.name, kind: entry.kind, month: result.month, pageCount: result.pageCount, transactionCount: result.transactions.length, ...(typeof result.declaredTotal === "number" ? { declaredTotal: result.declaredTotal } : {}), invoiceMonthNormalized: entry.kind === "invoice", invoiceMonthByDueDate: entry.kind === "invoice" });
+        batchDocuments.push({ hash, name: entry.file.name, kind: entry.kind, month: result.month, pageCount: result.pageCount, transactionCount: result.transactions.length, ...(typeof result.declaredTotal === "number" ? { declaredTotal: result.declaredTotal } : {}), invoiceMonthNormalized: entry.kind === "invoice", invoiceMonthByDueDate: entry.kind === "invoice", invoiceTransactionsByPurchaseDate: entry.kind === "invoice" });
         batchTransactions.push(...result.transactions.map((item) => { const rule = classificationRules.find((entry) => merchantKey(item.description).includes(entry.pattern)); return { ...item, category: rule?.category ?? item.category, month: entry.kind === "invoice" ? item.date.slice(0, 7) : result.month, documentHash: hash, documentName: entry.file.name }; }));
       }
       if (duplicateCount) batchWarnings.push(`${duplicateCount} documento${duplicateCount > 1 ? "s repetidos foram ignorados" : " repetido foi ignorado"}.`);
